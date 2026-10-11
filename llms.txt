@@ -1,0 +1,49 @@
+# openconnectsg
+> Automated, DPAPI-secured OpenConnect VPN Client for Windows running as a native Windows Service via NSSM.
+
+## Overview
+- **Project Name**: OpenConnectSg
+- **CLI Binary / Identifier**: `openconnectsg` (always lowercase)
+- **Repository**: https://github.com/sparklings/openconnectsg
+- **License**: MIT
+- **Platform**: Windows 10, Windows 11, Windows Server 2016+ (x64)
+- **Runtime**: Windows PowerShell 5.1+
+
+## Core Purpose & Problem Solved
+1. **Background Service Automation**: Replaces heavy official GUI VPN clients with a headless, background Windows Service managed by NSSM 2.24. Connects automatically on Windows startup.
+2. **DPAPI Credential Security**: Encrypts VPN passwords using Windows DPAPI (`ProtectedData.Protect` with `LocalMachine` scope) and locks permissions with ACL (`icacls SYSTEM:F Administrators:F`). No plaintext credentials stored on disk.
+3. **Fingerprint Pinning (RFC 7469)**: Automatically captures and pins self-signed server certificate hashes (`pin-sha256`) to securely bypass untrusted CA warnings without disabling TLS verification.
+4. **Single-Tunnel Enforcement**: Automatically disconnects other active tunnels when initiating a new connection to avoid routing conflicts.
+5. **Unified Daemon Runner**: Executes directly via `openconnectsg.ps1 service-run <service_name>` under NSSM, eliminating temporary dynamic wrapper scripts.
+
+## File Hierarchy
+- `src/openconnectsg.ps1`: Primary CLI dispatcher and NSSM service daemon runner.
+- `src/openconnectsg.cmd`: System PATH wrapper for CMD and PowerShell invocation.
+- `src/init-openconnectsg.ps1`: Profile setup wizard with SHA256 binary checksum validation.
+- `install/install-openconnectsg.ps1`: One-click system installer deploying to `C:\Program Files\OpenConnect\bin`.
+- `docs/commands.md`: Exhaustive CLI subcommand and alias reference manual.
+- `docs/install-guide.md`: Step-by-step deployment guide for online, offline, and air-gapped environments.
+- `docs/openconnectsg.md`: Technical architecture and deep-dive design documentation.
+
+## CLI Command Quick Reference
+- `openconnectsg` / `openconnectsg list` / `openconnectsg ls`: List registered VPN profiles with connection status.
+- `openconnectsg setup` / `openconnectsg add`: Interactive wizard to register a new VPN profile and start its service.
+- `openconnectsg connect <profile>` / `openconnectsg up <profile>`: Connect to profile (stops competing tunnels).
+- `openconnectsg disconnect [<profile|all>]` / `openconnectsg down`: Disconnect specific or all active tunnels.
+- `openconnectsg alias <profile> <alias_name>`: Assign friendly shortcut alias to a profile.
+- `openconnectsg default <profile>`: Set default fallback profile.
+- `openconnectsg remove <profile>` / `openconnectsg rm <profile>`: Stop service, unregister NSSM daemon, and delete profile directory.
+- `openconnectsg status [<profile>]`: Query real-time service status.
+- `openconnectsg version` / `openconnectsg -v`: Display current version.
+- `openconnectsg help` / `openconnectsg -h`: Display CLI help.
+
+## Profile Identifier Rules
+Subcommands accept:
+1. Index number (`1`, `2`)
+2. Custom alias (`office`, `lab`)
+3. Username (`user01`)
+4. Service name substring (`443`, `203.0.113`)
+
+## External Dependencies & Official SHA256 Hashes
+- **NSSM 2.24 (win64)**: `F689EE9AF94B00E9E3F0BB072B34CAAF207F32DCB4F5782FC9CA351DF9A06C97`
+- **OpenConnect CLI v9.21 (MinGW64-GnuTLS)**: Automated install via installer artifact.
