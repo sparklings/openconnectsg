@@ -1,6 +1,6 @@
-# openconnectsg 서브커맨드 매뉴얼
+# openconnectsg 서브커맨드 메뉴얼 (Subcommand Manual)
 
-`openconnectsg` CLI 도구에서 지원하는 모든 서브커맨드의 구문, 파라미터, 동작 정책 및 실행 예시를 정리한 사용자 매뉴얼입니다.
+`openconnectsg` CLI 도구에서 지원하는 모든 서브커맨드의 구문, 파라미터, 동작 정책 및 실행 예시를 정리한 사용자 메뉴얼입니다.
 
 ---
 

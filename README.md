@@ -37,7 +37,7 @@ Windows 환경에서 `openconnect.exe` CLI 도구를 사용할 때, 반복되는
 openconnectsg/
 ├── .github/                  # GitHub 워크플로 및 이슈 템플릿
 ├── docs/
-│   ├── commands.md           # 서브커맨드 및 별칭 전체 레퍼런스 매뉴얼
+│   ├── subcommand-manual.md  # 서브커맨드 및 별칭 전체 레퍼런스 메뉴얼
 │   ├── install-guide.md      # 온라인/오프라인 환경별 배포 가이드
 │   └── openconnectsg.md      # 시스템 아키텍처 및 내부 원리 상세 문서
 ├── install/
@@ -101,7 +101,7 @@ openconnectsg disconnect all       # 모든 활성 VPN 연결 해제
 | `openconnectsg version` | `-v` | 현재 버전 출력 (`0.1.0`) |
 | `openconnectsg help` | `-h` | CLI 도움말 화면 출력 |
 
-자세한 사용법은 [서브커맨드 매뉴얼](docs/commands.md)을 참조하십시오.
+자세한 사용법은 [서브커맨드 메뉴얼](docs/subcommand-manual.md)을 참조하십시오.
 
 ---
 

@@ -37,7 +37,7 @@ openconnectsg/
 ├── llms-full.txt                   # Deep-dive architectural specification for LLMs
 ├── README.md                       # Public documentation with comparison and FAQ
 ├── docs/
-│   ├── commands.md                 # Full CLI command, syntax, and alias reference
+│   ├── subcommand-manual.md        # Full CLI subcommand, syntax, and alias reference
 │   ├── install-guide.md            # Online, offline, and air-gapped installation guide
 │   └── openconnectsg.md            # Architectural breakdown and troubleshooting
 ├── install/

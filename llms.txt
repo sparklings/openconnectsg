@@ -21,7 +21,7 @@
 - `src/openconnectsg.cmd`: System PATH wrapper for CMD and PowerShell invocation.
 - `src/init-openconnectsg.ps1`: Profile setup wizard with SHA256 binary checksum validation.
 - `install/install-openconnectsg.ps1`: One-click system installer deploying to `C:\Program Files\OpenConnect\bin`.
-- `docs/commands.md`: Exhaustive CLI subcommand and alias reference manual.
+- `docs/subcommand-manual.md`: Exhaustive CLI subcommand and alias reference manual.
 - `docs/install-guide.md`: Step-by-step deployment guide for online, offline, and air-gapped environments.
 - `docs/openconnectsg.md`: Technical architecture and deep-dive design documentation.
 

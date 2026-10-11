@@ -62,7 +62,7 @@
 | `src\init-openconnectsg.ps1` | 프로필 등록 마법사 및 의존성 검증기 |
 | `install\install-openconnectsg.ps1` | 시스템 배포 및 PATH 등록 프로그램 |
 | `docs\openconnectsg.md` | 아키텍처 및 상세 기술 문서 (본 문서) |
-| `docs\commands.md` | 서브커맨드 레퍼런스 매뉴얼 |
+| `docs\subcommand-manual.md` | 서브커맨드 레퍼런스 메뉴얼 |
 | `docs\install-guide.md` | 배포 및 설치 가이드 |
 
 런타임 경로(설치 후):
