@@ -1,0 +1,120 @@
+# openconnectsg - Full Technical Specification for Large Language Models (LLMs)
+
+## 1. Project Identity and Metadata
+- Canonical Name: OpenConnectSg
+- Package / Command Identifier: `openconnectsg` (strictly lowercase across all scripts, files, and commands)
+- Official Repository: https://github.com/sparklings/openconnectsg
+- License: MIT License
+- Version: 3.0.0
+- Target OS: Windows 10, Windows 11, Windows Server 2016, 2019, 2022 (x64)
+- Shell Dependency: Windows PowerShell 5.1+ (Engine Version 5.1.x)
+- Security Scope: Windows Data Protection API (DPAPI) `LocalMachine` scope
+
+## 2. Problem Statement and Architectural Rationale
+### The Problem
+Traditional OpenConnect usage on Windows either requires:
+1. Running an interactive terminal in the foreground, entering passwords on each connection.
+2. Relying on GUI clients that cannot run as headless daemons on server boot or during non-interactive sessions.
+3. Storing plaintext passwords in configuration files or batch scripts, violating credential security standards.
+4. Handling self-signed server certificates by disabling certificate validation (`--no-cert-check`), introducing man-in-the-middle (MITM) vulnerabilities.
+
+### The Solution: openconnectsg Architecture
+`openconnectsg` combines:
+1. **NSSM 2.24** to register PowerShell as a native Windows Service with automatic restart and stdout/stderr log rotation.
+2. **Windows DPAPI** (`System.Security.Cryptography.ProtectedData`) to encrypt passwords at rest with `LocalMachine` scope, guarded by strict NTFS ACLs (`SYSTEM:F`, `Administrators:F`).
+3. **RFC 7469 Public Key Pinning (`pin-sha256`)** discovered during initial setup, ensuring strict TLS validation without disabling certificate verification.
+4. **Unified In-Process Service Runner**: The main script (`openconnectsg.ps1 service-run <name>`) acts as the Windows Service application target, eliminating runtime script generation.
+5. **Single-Tunnel Mutex & Orchestration**: Acquires a global named mutex (`Global\<svcName>`) and stops conflicting active tunnels upon new connection.
+
+## 3. Directory Layout and File Responsibilities
+```
+openconnectsg/
+├── .gitattributes                  # Enforces CRLF for .ps1, .cmd, .md
+├── .gitignore                      # Prevents committing secrets (*.bin, pw.bin) & logs
+├── CITATION.cff                    # Machine-readable scholarly & repository metadata
+├── LICENSE                         # MIT License
+├── llms.txt                        # Concise LLM ingestion specification
+├── llms-full.txt                   # Deep-dive architectural specification for LLMs
+├── README.md                       # Public documentation with comparison and FAQ
+├── docs/
+│   ├── commands.md                 # Full CLI command, syntax, and alias reference
+│   ├── install-guide.md            # Online, offline, and air-gapped installation guide
+│   └── openconnectsg.md            # Architectural breakdown and troubleshooting
+├── install/
+│   └── install-openconnectsg.ps1   # Deployment installer copying binaries to C:\Program Files\OpenConnect\bin and setting system PATH
+└── src/
+    ├── openconnectsg.ps1           # Main dispatcher CLI and daemon runner (`service-run`)
+    ├── openconnectsg.cmd           # CMD/PowerShell shuttle invoking openconnectsg.ps1
+    └── init-openconnectsg.ps1      # Interactive profile wizard with SHA256 integrity checks
+```
+
+## 4. Runtime File Structure (Post-Installation)
+```
+C:\Program Files\OpenConnect\
+├── bin\
+│   ├── openconnectsg.ps1           # Installed dispatcher
+│   ├── openconnectsg.cmd           # Registered in System PATH
+│   ├── init-openconnectsg.ps1      # Profile wizard script
+│   ├── install-openconnectsg.ps1   # Installer copy
+│   └── .installed                  # Installation marker metadata
+├── profiles\
+│   ├── default.txt                 # Contains active default service name
+│   └── openconnect_<host>_<port>_<tag8>\
+│       ├── openconnect.conf        # Config file (protocol, server, user, servercert)
+│       ├── user.txt                # Account username string
+│       ├── pin.txt                 # RFC 7469 pin-sha256 hash string
+│       ├── label.txt               # Friendly alias name string
+│       ├── pw.bin                  # DPAPI-encrypted password bytes (Restricted ACL)
+│       └── logs\
+│           ├── out.log             # NSSM captured standard output
+│           └── err.log             # NSSM captured standard error
+├── openconnect.exe                 # OpenConnect MinGW64-GnuTLS CLI
+└── repo\                           # Local git clone repository
+C:\Program Files\nssm\
+└── nssm.exe                        # NSSM 2.24 x64 binary (SHA256 verified)
+```
+
+## 5. CLI Command Specification
+| Command | Primary Aliases | Parameters | Description |
+|---|---|---|---|
+| `list` | `ls`, (none) | None | Displays formatted table of all profiles with Index, User, Server, Alias, Status, and Default flag (`*`). |
+| `status` | None | `[<profile>]` | Queries real-time service status (`Running`, `Stopped`, `N/A`) for a specific profile or all. |
+| `connect` | `up`, `start` | `[<profile>]` | Connects tunnel. Terminates other running openconnect tunnels (single-tunnel policy). Updates `default.txt`. |
+| `disconnect`| `down`, `stop` | `[<profile\|all>]` | Stops target service or all active tunnels via NSSM. |
+| `setup` | `add`, `install` | None | Launches interactive configuration wizard (`init-openconnectsg.ps1`). |
+| `alias` | `label` | `<profile> <name>` | Writes friendly alias to `profiles\<name>\label.txt`. |
+| `default` | None | `<profile>` | Sets active default profile pointer in `profiles\default.txt`. |
+| `remove` | `rm`, `delete` | `<profile>` | Prompts confirmation (`yes`), stops service, deletes NSSM service, purges profile directory. |
+| `service-run`| None | `<service_name>`| **Internal daemon runner**: Mutex guard -> DPAPI Unprotect -> launch `openconnect.exe` -> pipe password via stdin. |
+| `version` | `-v`, `--version`| None | Outputs current tool version (`openconnectsg 3.0.0`). |
+| `help` | `-h`, `--help` | None | Displays help usage screen. |
+
+## 6. Identifier Resolution Engine (`Resolve-Profile`)
+When a user provides `<profile>`, `openconnectsg` resolves the target through this precedence order:
+1. Integer Match: Numeric token matched against 1-based profile index.
+2. Exact Alias Match: Token matched against `label.txt`. Ambiguity throws error.
+3. Exact Username Match: Token matched against `user.txt`. Ambiguity throws error.
+4. Substring Match: Escaped wildcard query matching alias, username, server, or service name. Single match accepted; multiple matches throw ambiguity error.
+5. Default Fallback: If no argument passed to `connect`, falls back to `default.txt` if valid.
+
+## 7. Security and Cryptography Details
+1. **Password Encryption**:
+   - `Add-Type -AssemblyName System.Security`
+   - `[System.Security.Cryptography.ProtectedData]::Protect($bytes, $null, 'LocalMachine')`
+   - Scoped to `LocalMachine` to allow the background Windows Service running under `NT AUTHORITY\SYSTEM` to decrypt the payload on boot.
+2. **Access Control List (ACL)**:
+   - `icacls "pw.bin" /inheritance:r /grant "SYSTEM:F" /grant "Administrators:F"`
+   - Inheritance stripped; readable only by SYSTEM and members of local Administrators.
+3. **Dependency Integrity Verification**:
+   - NSSM 2.24 SHA256: `F689EE9AF94B00E9E3F0BB072B34CAAF207F32DCB4F5782FC9CA351DF9A06C97`.
+   - Verified before binary deployment; failed matches trigger immediate deletion and script halt.
+4. **Certificate Pinning**:
+   - Probes SSL handshake for 30s using PowerShell background job.
+   - Extracts `pin-sha256:<base64>` header and stores in `openconnect.conf` under `servercert=`.
+   - Validates RFC 7469 format `^pin-sha256:[A-Za-z0-9+/]{40,}={0,2}$`.
+
+## 8. Common LLM Troubleshooting Inferences
+- **Error: "already running" or Mutex Conflict**: A previous PowerShell instance holds `Global\<svcName>`. Terminate lingering `openconnect.exe` or `powershell.exe` service instances.
+- **Error: "signer not found"**: Expected behavior with self-signed CAs. Safely handled by `pin-sha256` pinning.
+- **Service starts then stops immediately**: Check `profiles\<svcName>\logs\err.log`. Common cause is wrong credentials or invalid pin format.
+- **Command not recognized after install**: System PATH was updated; requires closing existing terminal and opening a fresh session.

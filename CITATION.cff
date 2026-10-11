@@ -1,0 +1,22 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+  - family-names: "Park"
+    given-names: "Sungwon"
+title: "openconnectsg: Automated, DPAPI-Secured OpenConnect Windows Service Manager"
+version: 3.0.0
+date-released: 2026-10-11
+url: "https://github.com/sparklings/openconnectsg"
+repository-code: "https://github.com/sparklings/openconnectsg"
+license: MIT
+keywords:
+  - openconnect
+  - vpn
+  - windows-service
+  - nssm
+  - powershell
+  - dpapi
+  - ssl-vpn
+  - automation
+  - daemon
+abstract: "A lightweight, secure Windows CLI tool and service manager that automates OpenConnect VPN connections as native Windows Services via NSSM with Windows DPAPI password encryption and RFC 7469 certificate fingerprint pinning."

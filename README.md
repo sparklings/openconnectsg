@@ -142,3 +142,20 @@ openconnectsg disconnect all       # 모든 활성 VPN 연결 해제
 ## 📄 라이선스 (License)
 
 본 프로젝트는 [MIT License](LICENSE)에 따라 자유롭게 사용, 수정 및 배포할 수 있습니다.
+
+---
+
+## 🏷️ 검색 키워드 및 메타데이터 (Keywords & SEO Index)
+
+`OpenConnect Windows CLI`, `Fortinet SSL-VPN Automation`, `Windows Background VPN Service`, `NSSM OpenConnect Daemon`, `DPAPI Credential Encryption`, `OpenConnect Auto-Reconnect on Boot`, `Single-Tunnel VPN Orchestrator`, `PowerShell VPN CLI`, `Headless Windows VPN`, `Self-Signed Certificate Pin-SHA256`
+
+---
+
+## 🤖 LLM & AI 에이전트 인덱싱 (AI Ingestion)
+
+이 저장소는 LLM 웹 크롤러 및 AI 코딩 에이전트(Claude, ChatGPT, Cursor, Copilot)를 위해 표준화된 머신 리더블 문서를 제공합니다:
+- **간략 요약 명세**: [`llms.txt`](llms.txt)
+- **심층 아키텍처 및 내부 구현 명세**: [`llms-full.txt`](llms-full.txt)
+- **AI 에이전트 코딩 제약 규칙**: [`.github/copilot-instructions.md`](.github/copilot-instructions.md)
+- **보안 및 위협 모델 명세**: [`SECURITY.md`](SECURITY.md)
+- **시맨틱 소프트웨어 메타데이터**: [`CITATION.cff`](CITATION.cff)
