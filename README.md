@@ -128,10 +128,11 @@ openconnectsg disconnect all       # 모든 활성 VPN 연결 해제
 
 ## 🙏 감사의 글 (Acknowledgments & Credits)
 
-본 프로젝트는 훌륭한 오픈소스 생태계가 있었기에 만들어질 수 있었습니다. 핵심 통신 엔진과 윈도우 서비스 관리 기반을 공개하고 유지해 주시는 두 프로젝트 팀에게 깊은 감사를 전합니다:
+본 프로젝트는 훌륭한 오픈소스 및 플랫폼 생태계가 있었기에 만들어질 수 있었습니다. 핵심 통신 엔진, 윈도우 서비스 관리 및 스크립팅 런타임을 제공해 주신 프로젝트와 엔지니어분들께 깊은 감사를 전합니다:
 
 - **[OpenConnect](https://www.infradead.org/openconnect/)**: 강력하고 신뢰성 높은 다중 프로토콜 VPN 클라이언트를 만들어 주신 OpenConnect 개발진과 기여자 여러분께 진심으로 감사드립니다. 본 도구의 모든 네트워크 터널링과 보안 접속은 전적으로 `openconnect.exe`에 의존하고 있습니다.
 - **[NSSM (Non-Sucking Service Manager)](https://nssm.cc/)**: Windows 환경에서 프로세스를 견고한 백그라운드 서비스로 구동할 수 있도록 뛰어난 도구를 제공해 주신 Iain Patterson 님과 NSSM 기여자분들께 감사드립니다.
+- **[Microsoft PowerShell](https://github.com/PowerShell/PowerShell)**: Windows 환경에서 시스템 제어, DPAPI 암호화 연동 및 프로세스 오케스트레이션을 유연하고 안정적으로 구현할 수 있는 객체 지향 스크립팅 플랫폼을 제공해 준 Microsoft 및 PowerShell 팀에 감사드립니다.
 
 ---
 
