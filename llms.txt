@@ -1,5 +1,5 @@
 # openconnectsg
-> Automated, DPAPI-secured OpenConnect VPN Client for Windows running as a native Windows Service via NSSM.
+> PowerShell automation wrapper and background service manager for openconnect.exe on Windows via NSSM.
 
 ## Overview
 - **Project Name**: OpenConnectSg

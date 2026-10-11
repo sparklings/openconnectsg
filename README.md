@@ -10,27 +10,16 @@ Windows 환경에서 `openconnect.exe` CLI 도구를 사용할 때, 반복되는
 
 ---
 
-## 📌 왜 openconnectsg 인가? (Comparison)
+## 📌 프로젝트 소개 및 역할
 
-Windows에서 OpenConnect CLI(`openconnect.exe`)를 직접 실행할 때와 비교한 차이점입니다:
+`openconnectsg`는 독립적인 VPN 클라이언트가 아닙니다. Windows 환경에서 공식 [OpenConnect](https://www.infradead.org/openconnect/)(`openconnect.exe`) CLI 도구를 백그라운드 Windows 서비스로 구동하고 프로필 관리를 보조하기 위해 작성된 **PowerShell 래퍼(Wrapper) 스크립트**입니다.
 
-| 항목 | 수동 OpenConnect CLI 실행 | openconnectsg 사용 시 |
-|---|---|---|
-| **실행 방식** | 매번 콘솔 창을 열어두고 실행 유지 필요 | **NSSM을 통해 백그라운드 Windows 서비스로 구동** |
-| **비밀번호 입력** | 접속할 때마다 직접 입력하거나 배치 파일에 기록 | **Windows DPAPI(LocalMachine)로 암호화 보관 후 자동 전달** |
-| **프로필 관리** | 서버별 설정 및 계정 정보를 사용자가 수동 관리 | **번호·별칭 기반 프로필 등록/조회/삭제 지원** |
-| **자체서명 인증서** | 인증서 핀(`pin-sha256`)을 수동 확인하여 인자 전달 | **최초 등록(`setup`) 시 지문 자동 확보 및 설정 파일 저장** |
-| **다중 접속 제어** | 사용자가 수동으로 이전 프로세스 확인 및 종료 | **새 연결 시 기존 실행 중인 터널 자동 정리 (단일 접속)** |
+실제 VPN 터널링 및 모든 네트워크 패킷 처리는 시스템에 설치된 `openconnect.exe`가 전담하며, `openconnectsg`는 다음과 같은 로컬 편의 기능만을 수행합니다:
 
----
-
-## 🚀 주요 기능 (Features)
-
-- **백그라운드 서비스 관리**: NSSM 2.24를 사용하여 콘솔 창 없이 백그라운드 Windows 서비스로 실행합니다.
-- **DPAPI 비밀번호 암호화**: 비밀번호를 평문으로 저장하지 않고, Windows DPAPI(`LocalMachine` 스코프)로 암호화하여 로컬 디스크에 저장합니다.
-- **프로필 기반 CLI 운영**: 서버 주소, 포트, 계정을 프로필로 저장하고 `openconnectsg connect <별칭>` 형태로 간편하게 전환합니다.
-- **인증서 지문 자동 고정**: 자체서명 인증서 환경에서 RFC 7469 `pin-sha256` 핀을 최초 1회 자동 수집하여 구성 파일에 저장합니다.
-- **NSSM 다운로드 검증**: 초기 셋업 시 다운로드받는 NSSM 바이너리의 공식 SHA256 체크섬을 검증합니다.
+- **백그라운드 서비스 구동 보조**: NSSM 2.24와 연계하여 터미널 창을 띄워두지 않고 백그라운드 Windows 서비스로 `openconnect.exe`를 실행합니다.
+- **DPAPI 비밀번호 암호화 보관**: 매 접속 시 비밀번호를 수동 입력하거나 평문 배치 파일에 적어두지 않도록, Windows DPAPI(`LocalMachine` 스코프)로 암호화하여 로컬 디스크에 보관한 뒤 서비스 기동 시 안전하게 전달합니다.
+- **프로필 기반 CLI 관리**: 서버 주소, 포트, 사용자 계정을 프로필별 디렉터리로 관리하며, `connect`, `disconnect`, `alias`, `status` 명령어로 간편하게 제어합니다.
+- **자체서명 인증서 지문 고정**: 자체서명 인증서 환경에서 최초 셋업 시 RFC 7469 `pin-sha256` 지문을 확인하여 설정 파일에 저장합니다.
 
 ---
 
