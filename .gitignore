@@ -1,0 +1,30 @@
+# Windows & Editor artifacts
+Thumbs.db
+Desktop.ini
+.DS_Store
+*.tmp
+*.bak
+*.swp
+*~
+
+# VS Code & JetBrains
+.vscode/
+.idea/
+
+# Security and Credentials
+*.bin
+pw.bin
+*.pfx
+*.key
+
+# Runtime generated data
+profiles/
+service/
+logs/
+*.log
+.installed
+
+# Temporary build/download files
+*.zip
+*.exe
+!openconnect-installer-*.exe
