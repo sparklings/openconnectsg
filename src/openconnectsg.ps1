@@ -196,10 +196,23 @@ function Do-Status {
   $s = Get-Service -Name $t.Name -ErrorAction SilentlyContinue
   $status = if ($s) { [string]$s.Status } else { 'N/A' }
   Write-Host ('{0}  {1}  {2}  {3}' -f $t.Name, $t.User, $t.Alias, $status)
+  return 0
 }
 
 function Do-Default {
   param($profiles, $token)
+  if ([string]::IsNullOrWhiteSpace($token)) {
+    if (Test-Path $defaultFile) {
+      $def = (Get-Content $defaultFile -Raw).Trim()
+      $hit = @($profiles | Where-Object { $_.Name -eq $def })
+      if ($hit.Count -eq 1) {
+        Write-Host "default = $($hit[0].Name) (Alias: $($hit[0].Alias), User: $($hit[0].User))"
+        return 0
+      }
+    }
+    Write-Host "No default profile set. Syntax: openconnectsg default <profile>"
+    return 1
+  }
   $t = Resolve-Profile $profiles $token
   Set-Content $defaultFile $t.Name -NoNewline -Encoding ascii
   Write-Host "default = $($t.Name)"
@@ -208,7 +221,9 @@ function Do-Default {
 
 function Do-Alias {
   param($profiles, $token, $alias)
-  if ([string]::IsNullOrWhiteSpace($alias)) { throw 'Please provide an alias. Syntax: openconnectsg alias <profile> <alias_name>' }
+  if ([string]::IsNullOrWhiteSpace($token) -or [string]::IsNullOrWhiteSpace($alias)) {
+    throw 'Please provide both profile and alias. Syntax: openconnectsg alias <profile> <alias_name>'
+  }
   $t = Resolve-Profile $profiles $token
   Set-Content (Join-Path (Join-Path $root $t.Name) 'label.txt') $alias -NoNewline -Encoding utf8
   Write-Host "alias '$alias' -> $($t.Name)"
@@ -217,6 +232,9 @@ function Do-Alias {
 
 function Do-Remove {
   param($profiles, $token)
+  if ([string]::IsNullOrWhiteSpace($token)) {
+    throw 'Please specify a profile to remove. Syntax: openconnectsg remove <profile>'
+  }
   $t = Resolve-Profile $profiles $token
   Write-Host "Target: $($t.Name) (User: $($t.User))"
   if ($t.Status -eq 'Running') { Write-Host '  Notice: Service is active. Will be terminated prior to removal.' }
