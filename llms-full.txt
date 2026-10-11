@@ -13,10 +13,10 @@
 ## 2. Problem Statement and Architectural Rationale
 ### The Problem
 Traditional OpenConnect usage on Windows either requires:
-1. Running an interactive terminal in the foreground, entering passwords on each connection.
-2. Relying on GUI clients that cannot run as headless daemons on server boot or during non-interactive sessions.
-3. Storing plaintext passwords in configuration files or batch scripts, violating credential security standards.
-4. Handling self-signed server certificates by disabling certificate validation (`--no-cert-check`), introducing man-in-the-middle (MITM) vulnerabilities.
+1. Running an interactive terminal in the foreground and entering passwords on each connection.
+2. Keeping a terminal console session alive continuously to maintain the connection.
+3. Storing plaintext passwords in configuration files or batch scripts to automate authentication.
+4. Handling self-signed server certificates by manually managing pin hashes or disabling checks.
 
 ### The Solution: openconnectsg Architecture
 `openconnectsg` combines:

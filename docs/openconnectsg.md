@@ -7,9 +7,9 @@
 
 ## 1. 개요
 
-- 매번 비밀번호를 입력하던 원격VPN서버 접속을, 비밀번호를 **DPAPI로 봉인**해 두고 윈도OS 부팅 시 자동 접속하도록 구성합니다.
-- 접속은 `openconnect.exe`가 수행하고, 서비스 등록·감시·재시작은 **NSSM 2.24**가 담당합니다.
-- 초기 환경 설정(`setup`)과 일상적인 운영(`list`, `connect`, `disconnect` 등)을 **단일 CLI `openconnectsg`**로 통일했습니다.
+- 반복적인 비밀번호 입력 과정을 줄이기 위해 Windows DPAPI(LocalMachine)로 비밀번호를 암호화하여 로컬에 보관하고, 서비스 기동 시 자동으로 전달합니다.
+- 접속은 `openconnect.exe`가 수행하고, Windows 백그라운드 서비스 등록 및 관리는 **NSSM 2.24**가 담당합니다.
+- 프로필 설정(`setup`)과 일상적인 연결·해제(`list`, `connect`, `disconnect`)를 **단일 CLI `openconnectsg`**로 조작합니다.
 
 ### 요구 사항
 

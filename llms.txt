@@ -10,7 +10,7 @@
 - **Runtime**: Windows PowerShell 5.1+
 
 ## Core Purpose & Problem Solved
-1. **Background Service Automation**: Replaces heavy official GUI VPN clients with a headless, background Windows Service managed by NSSM 2.24. Connects automatically on Windows startup.
+1. **Background Service Automation**: Automates `openconnect.exe` as a headless background Windows Service managed by NSSM 2.24 without requiring an open console window.
 2. **DPAPI Credential Security**: Encrypts VPN passwords using Windows DPAPI (`ProtectedData.Protect` with `LocalMachine` scope) and locks permissions with ACL (`icacls SYSTEM:F Administrators:F`). No plaintext credentials stored on disk.
 3. **Fingerprint Pinning (RFC 7469)**: Automatically captures and pins self-signed server certificate hashes (`pin-sha256`) to securely bypass untrusted CA warnings without disabling TLS verification.
 4. **Single-Tunnel Enforcement**: Automatically disconnects other active tunnels when initiating a new connection to avoid routing conflicts.

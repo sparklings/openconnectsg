@@ -2,37 +2,35 @@
 
 > 프로젝트명은 **OpenConnectSg**로 정의하며, 실행 명령·스크립트 소스코드·문서 및 내부 식별자는 모두 소문자 `openconnectsg`로 표기합니다.
 
-**Automated, DPAPI-Secured OpenConnect Windows Service Manager for Remote VPN Access.**  
-원격VPN서버(Fortinet SSL-VPN 호환) 환경에서 무거운 GUI 클라이언트 없이, NSSM 백그라운드 서비스 및 Windows DPAPI 암호화로 원클릭·자동 접속을 수행하는 Windows 전용 오픈소스 CLI 도구입니다.
+Windows 환경에서 `openconnect.exe` CLI 도구를 사용할 때, 반복되는 수작업(매번 비밀번호 입력, 콘솔 창 유지, 다중 접속 관리)을 줄이기 위해 작성된 PowerShell 기반 자동화 도구입니다.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Platform: Windows](https://img.shields.io/badge/Platform-Windows%2010%2F11%2FServer-blue.svg)]()
 [![Shell: PowerShell 5.1+](https://img.shields.io/badge/PowerShell-5.1%2B-blue.svg)]()
-[![Security: DPAPI](https://img.shields.io/badge/Security-Windows%20DPAPI-green.svg)]()
-[![Daemon: NSSM 2.24](https://img.shields.io/badge/Daemon-NSSM%202.24-orange.svg)]()
 
 ---
 
 ## 📌 왜 openconnectsg 인가? (Comparison)
 
-| 비교 항목 | 기존 공식 GUI 클라이언트 | openconnectsg (본 도구) |
+Windows에서 OpenConnect CLI(`openconnect.exe`)를 직접 실행할 때와 비교한 차이점입니다:
+
+| 항목 | 수동 OpenConnect CLI 실행 | openconnectsg 사용 시 |
 |---|---|---|
-| **실행 형태** | 무거운 트레이 아이콘 GUI 프로그램 상주 | **Windows Service (NSSM) 백그라운드 데몬** |
-| **부팅 시 자동 연결** | 윈도우 로그인 후 수동 접속/인증 필요 | **OS 부팅 즉시 백그라운드 자동 터널링** |
-| **비밀번호 관리** | 브라우저/레지스트리 평문 노출 위험 | **Windows DPAPI (LocalMachine) 바이트 암호화 봉인** |
-| **자체서명 인증서** | 매번 '신뢰할 수 없는 인증서' 팝업 발생 | **RFC 7469 `pin-sha256` 자동 프로빙 및 지문 고정** |
-| **다중 계정/프로필** | 계정 전환 시 로그아웃/재입력 번거로움 | **프로필별 독립 관리 및 `openconnectsg connect <별칭>` 전환** |
-| **터널 충돌 방지** | 수동으로 이전 연결 종료 필요 | **단일 터널 정책(Single-Tunnel Policy)으로 자동 상호 배제** |
+| **실행 방식** | 매번 콘솔 창을 열어두고 실행 유지 필요 | **NSSM을 통해 백그라운드 Windows 서비스로 구동** |
+| **비밀번호 입력** | 접속할 때마다 직접 입력하거나 배치 파일에 기록 | **Windows DPAPI(LocalMachine)로 암호화 보관 후 자동 전달** |
+| **프로필 관리** | 서버별 설정 및 계정 정보를 사용자가 수동 관리 | **번호·별칭 기반 프로필 등록/조회/삭제 지원** |
+| **자체서명 인증서** | 인증서 핀(`pin-sha256`)을 수동 확인하여 인자 전달 | **최초 등록(`setup`) 시 지문 자동 확보 및 설정 파일 저장** |
+| **다중 접속 제어** | 사용자가 수동으로 이전 프로세스 확인 및 종료 | **새 연결 시 기존 실행 중인 터널 자동 정리 (단일 접속)** |
 
 ---
 
-## 🚀 주요 기능 (Key Features)
+## 🚀 주요 기능 (Features)
 
-- **백그라운드 서비스 자동화**: NSSM 2.24를 기반으로 Windows 서비스로 자동 등록되어 부팅 시 자동 재연결, 장애 시 자동 재기동, 입출력 로그 로테이션을 지원합니다.
-- **철저한 자격증명 보안 (Zero-Plaintext)**: Windows DPAPI(`ProtectedData`)를 사용하여 비밀번호를 암호화해 저장하며, SYSTEM 및 Administrators 권한으로 ACL을 잠급니다.
-- **인증서 지문 자동 고정**: 자체서명 인증서 환경에서도 `signer not found` 경고를 우회하기 위해 RFC 7469 SHA256 핀을 자동 획득하여 무결성을 검증합니다.
-- **공급망 보안 (Supply Chain Integrity)**: 설치 시 외부 바이너리(NSSM 등)에 대해 내장된 공식 SHA256 체크섬을 검증하여 파일 변조를 차단합니다.
-- **간결한 CLI UX**: `openconnectsg list`, `connect`, `disconnect`, `setup`, `alias`, `rm` 등 현대적인 직관적 명령어를 제공합니다.
+- **백그라운드 서비스 관리**: NSSM 2.24를 사용하여 콘솔 창 없이 백그라운드 Windows 서비스로 실행합니다.
+- **DPAPI 비밀번호 암호화**: 비밀번호를 평문으로 저장하지 않고, Windows DPAPI(`LocalMachine` 스코프)로 암호화하여 로컬 디스크에 저장합니다.
+- **프로필 기반 CLI 운영**: 서버 주소, 포트, 계정을 프로필로 저장하고 `openconnectsg connect <별칭>` 형태로 간편하게 전환합니다.
+- **인증서 지문 자동 고정**: 자체서명 인증서 환경에서 RFC 7469 `pin-sha256` 핀을 최초 1회 자동 수집하여 구성 파일에 저장합니다.
+- **NSSM 다운로드 검증**: 초기 셋업 시 다운로드받는 NSSM 바이너리의 공식 SHA256 체크섬을 검증합니다.
 
 ---
 

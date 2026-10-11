@@ -169,7 +169,7 @@ openconnectsg <서브커맨드> [인자1] [인자2] ...
   2. NSSM 2.24 바이너리 확인 및 **공식 SHA256 체크섬 무결성 검증**
   3. openconnect v9.21 다운로드 및 설치
   4. 프로필 설정 파일(`openconnect.conf`, `user.txt`) 생성
-  5. Windows DPAPI LocalMachine을 이용한 비밀번호 암호화 봉인(`pw.bin`) 및 SYSTEM/Admin ACL 잠금
+  5. Windows DPAPI(LocalMachine)를 이용한 비밀번호 암호화 저장(`pw.bin`) 및 SYSTEM/Admin NTFS ACL 적용
   6. 서버 인증서 지문(`pin-sha256`, RFC7469) 자동 프로빙 및 저장
   7. 통합 데몬 러너(`service-run`) 기반 NSSM Windows Service 등록 및 기동
 
