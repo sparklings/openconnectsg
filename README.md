@@ -111,7 +111,7 @@ openconnectsg disconnect all       # 모든 활성 VPN 연결 해제
 | `openconnectsg alias <p> <별칭>` | `label` | 프로필에 호출용 별칭 부여 |
 | `openconnectsg default <p>` | - | 기본 접속 대상 프로필 포인터 지정 |
 | `openconnectsg remove <p>` | `rm`, `delete` | 프로필 구성 삭제 및 Windows 서비스 영구 등록 해제 |
-| `openconnectsg version` | `-v` | 현재 버전 출력 (`3.0.0`) |
+| `openconnectsg version` | `-v` | 현재 버전 출력 (`0.1.0`) |
 | `openconnectsg help` | `-h` | CLI 도움말 화면 출력 |
 
 자세한 사용법은 [서브커맨드 매뉴얼](docs/commands.md)을 참조하십시오.

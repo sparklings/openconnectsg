@@ -4,8 +4,8 @@
 
 | Version | Supported | Security Updates |
 |---|---|---|
-| 3.0.x | :white_check_mark: | Active support |
-| < 3.0 | :x: | End of life (deprecated) |
+| 0.1.x | :white_check_mark: | Active support |
+| < 0.1 | :x: | End of life (deprecated) |
 
 ---
 

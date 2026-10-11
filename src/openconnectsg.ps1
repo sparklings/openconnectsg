@@ -11,7 +11,7 @@
   Exit codes: 0 Success, 1 Runtime error, 2 Usage error.
 #>
 $ErrorActionPreference = 'Stop'
-$script:Version = '3.0.0'
+$script:Version = '0.1.0'
 
 $ocRoot      = 'C:\Program Files\OpenConnect'
 $root        = Join-Path $ocRoot 'profiles'
