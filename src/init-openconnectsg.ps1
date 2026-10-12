@@ -1,7 +1,7 @@
 ﻿#Requires -RunAsAdministrator
 <#
 .SYNOPSIS
-  openconnectsg profile setup wizard (invoked by 'openconnectsg setup', v0.1.1)
+  openconnectsg profile setup wizard (invoked by 'openconnectsg setup', v0.1.1a)
 .DESCRIPTION
   Interactive wizard that prompts for remote VPN host, port, credentials,
   verifies binary dependencies with cryptographic checksums, encrypts credentials via DPAPI,
@@ -340,3 +340,4 @@ $statusRaw = (& $nssmExe status $svcName 2>&1 | Out-String).Trim()
 Write-Host "Service status: $statusRaw"
 Write-Host "Profile setup complete. Run 'openconnectsg' to check status."
 Write-Gap
+

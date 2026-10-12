@@ -5,7 +5,7 @@
 - Package / Command Identifier: `openconnectsg` (strictly lowercase across all scripts, files, and commands)
 - Official Repository: https://github.com/sparklings/openconnectsg
 - License: MIT License
-- Version: 0.1.0
+- Version: 0.1.1a
 - Target OS: Windows 10, Windows 11, Windows Server 2016, 2019, 2022 (x64)
 - Shell Dependency: Windows PowerShell 5.1+ (Engine Version 5.1.x)
 - Security Scope: Windows Data Protection API (DPAPI) `LocalMachine` scope
@@ -85,8 +85,9 @@ C:\Program Files\nssm\
 | `alias` | `label` | `<profile> <name>` | Writes friendly alias to `profiles\<name>\label.txt`. |
 | `default` | None | `<profile>` | Sets active default profile pointer in `profiles\default.txt`. |
 | `remove` | `rm`, `delete` | `<profile>` | Prompts confirmation (`yes`), stops service, deletes NSSM service, purges profile directory. |
+| `uninstall` | `un`, `purge` | `[<scope>]` | Uninstalls openconnectsg (`app`: script/service/profiles only, `full`: complete purge including NSSM and OpenConnect CLI). |
 | `service-run`| None | `<service_name>`| **Internal daemon runner**: Mutex guard -> DPAPI Unprotect -> launch `openconnect.exe` -> pipe password via stdin. |
-| `version` | `-v`, `--version`| None | Outputs current tool version (`openconnectsg 0.1.0`). |
+| `version` | `-v`, `--version`| None | Outputs current tool version (`openconnectsg 0.1.1a`). |
 | `help` | `-h`, `--help` | None | Displays help usage screen. |
 
 ## 6. Identifier Resolution Engine (`Resolve-Profile`)

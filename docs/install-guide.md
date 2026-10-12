@@ -75,7 +75,7 @@ powershell -ExecutionPolicy Bypass -File .\install\install-openconnectsg.ps1 -Sk
 ### 4.2. 설치 확인
 ```powershell
 openconnectsg version
-# 출력: openconnectsg 0.1.1
+# 출력: openconnectsg 0.1.1a
 ```
 
 ### 4.3. 초기 프로필 등록 마법사 실행

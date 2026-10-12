@@ -33,6 +33,7 @@
 - `openconnectsg alias <profile> <alias_name>`: Assign friendly shortcut alias to a profile.
 - `openconnectsg default <profile>`: Set default fallback profile.
 - `openconnectsg remove <profile>` / `openconnectsg rm <profile>`: Stop service, unregister NSSM daemon, and delete profile directory.
+- `openconnectsg uninstall [<scope>]` / `openconnectsg purge`: Interactive uninstaller for app-only or full purge removal.
 - `openconnectsg status [<profile>]`: Query real-time service status.
 - `openconnectsg version` / `openconnectsg -v`: Display current version.
 - `openconnectsg help` / `openconnectsg -h`: Display CLI help.

@@ -13,7 +13,7 @@
 $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $OutputEncoding = [System.Text.Encoding]::UTF8
-$script:Version = '0.1.1'
+$script:Version = '0.1.1a'
 
 $ocRoot      = 'C:\Program Files\OpenConnect'
 $root        = Join-Path $ocRoot 'profiles'
@@ -539,3 +539,4 @@ try {
   $exitCode = 1
 }
 exit $exitCode
+

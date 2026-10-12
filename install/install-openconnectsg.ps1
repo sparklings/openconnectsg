@@ -1,4 +1,4 @@
-#Requires -RunAsAdministrator
+﻿#Requires -RunAsAdministrator
 <#
 .SYNOPSIS
   openconnectsg system installer - Deploys openconnectsg binaries to C:\Program Files\OpenConnect\bin
@@ -103,7 +103,7 @@ if (-not (($mp -split ';') -contains $BinDir)) {
 # Verification and installation marker
 $cmd = Join-Path $BinDir 'openconnectsg.cmd'
 if (Test-Path $cmd) {
-  $ver = '0.1.1'
+  $ver = '0.1.1a'
   $marker = "version=$ver`r`nsource=$SourceDir`r`ninstalled=$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')`r`n"
   [System.IO.File]::WriteAllText((Join-Path $BinDir '.installed'), $marker, (New-Object System.Text.UTF8Encoding($false)))
   Write-Host "Installed openconnectsg $ver."
@@ -113,3 +113,4 @@ if (Test-Path $cmd) {
 
 Write-Host "Installation completed successfully."
 Write-Host "Next step: Open a new terminal and run 'openconnectsg setup' to add a profile."
+

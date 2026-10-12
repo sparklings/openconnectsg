@@ -20,6 +20,7 @@ Windows 환경에서 `openconnect.exe` CLI 도구를 사용할 때, 반복되는
 - **DPAPI 비밀번호 암호화 보관**: 매 접속 시 비밀번호를 수동 입력하거나 평문 배치 파일에 적어두지 않도록, Windows DPAPI(`LocalMachine` 스코프)로 암호화하여 로컬 디스크에 보관한 뒤 서비스 기동 시 안전하게 전달합니다.
 - **프로필 기반 CLI 관리**: 서버 주소, 포트, 사용자 계정을 프로필별 디렉터리로 관리하며, `connect`, `disconnect`, `alias`, `status` 명령어로 간편하게 제어합니다.
 - **자체서명 인증서 지문 고정**: 자체서명 인증서 환경에서 최초 셋업 시 RFC 7469 `pin-sha256` 지문을 확인하여 설정 파일에 저장합니다.
+- **클린 삭제 및 초기화(`uninstall`)**: 도구만 삭제(`app`)하거나 외부 의존성(NSSM, OpenConnect CLI)까지 시스템 전체에서 말끔히 정리(`full`)하는 언인스톨러를 내장했습니다.
 
 ---
 
@@ -99,7 +100,7 @@ openconnectsg disconnect all       # 모든 활성 VPN 연결 해제
 | `openconnectsg default <p>` | - | 기본 접속 대상 프로필 포인터 지정 |
 | `openconnectsg remove <p>` | `rm`, `delete` | 프로필 구성 삭제 및 Windows 서비스 영구 등록 해제 |
 | `openconnectsg uninstall [<s\>]` | `un`, `purge` | 도구 제거 (범위: `app` 앱 전용 삭제, `full` 전체 완전 삭제) |
-| `openconnectsg version` | `-v` | 현재 버전 출력 (`0.1.1`) |
+| `openconnectsg version` | `-v` | 현재 버전 출력 (`0.1.1a`) |
 | `openconnectsg help` | `-h` | CLI 도움말 화면 출력 |
 
 자세한 사용법은 [서브커맨드 메뉴얼](docs/subcommand-manual.md)을 참조하십시오.

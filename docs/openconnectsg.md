@@ -1,4 +1,4 @@
-# openconnectsg — OpenConnect 원격접속 자동화 (v0.1.1)
+# openconnectsg — OpenConnect 원격접속 자동화 (v0.1.1a)
 
 원격VPN서버 뒤 원격 내부 네트워크 서버자원에 **NSSM + openconnect CLI**로 자동 접속하는 Windows용 경량 CLI 도구.
 초기 프로필 설정부터 백그라운드 데몬 서비스 운영, 클린 삭제(`uninstall`)까지 단일 명령 `openconnectsg`로 수행합니다.
@@ -36,7 +36,7 @@
 - **통합 데몬 러너**: 이전 버전의 동적 래퍼 스크립트 생성 방식을 완전히 제거하고, `openconnectsg.ps1 service-run` 내부 서브커맨드가 단일화된 진입점으로 실행됩니다.
 - **서비스명**: `openconnect_<host>_<port>_<tag8>`, `tag8` = `SHA256("<host>|<port>|<user>")[0..8]`.
 - **프로필 디렉터리**: `profiles\<서비스명>\` — `openconnect.conf`·`user.txt`·`pin.txt`·`pw.bin`·`label.txt`·`logs\`.
-- **래퍼 흐름**: 전역 뮤텍스(`Global\<서비스명>`) $\rightarrow$ `pw.bin` DPAPI 복호화 $\rightarrow$ openconnect 프로세스 stdin 전달 $\rightarrow$ 종료코드 전파.
+- **래퍼 흐름**: 전역 뮤텍스(`Global\<서비스명>`) $\rightarrow$ `pw.bin` DPAPI 복호화 $\rightarrow$ openconnect 프로세스 stdin 전달(표준입력 파이프라인 무결성을 위해 `--non-inter` 배제) $\rightarrow$ 종료코드 전파.
 
 ### 비밀번호 보호 (DPAPI LocalMachine)
 
