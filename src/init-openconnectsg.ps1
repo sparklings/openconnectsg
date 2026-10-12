@@ -1,4 +1,4 @@
-﻿#Requires -RunAsAdministrator
+#Requires -RunAsAdministrator
 <#
 .SYNOPSIS
   openconnectsg profile setup wizard (invoked by 'openconnectsg setup', v0.1.0)
@@ -10,6 +10,8 @@
   Save encoding: UTF-8 with BOM, CRLF line endings.
 #>
 $ErrorActionPreference = 'Stop'
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$OutputEncoding = [System.Text.Encoding]::UTF8
 
 # Known Official SHA256 Checksums for Dependencies
 $NSSM_EXE_SHA256 = 'F689EE9AF94B00E9E3F0BB072B34CAAF207F32DCB4F5782FC9CA351DF9A06C97'
@@ -58,9 +60,26 @@ Write-Gap
 Write-Step "[2/7] Verifying NSSM service helper..."
 $nssmExe = Join-Path $nssmDir "nssm.exe"
 if (-not (Test-Path $nssmExe)) {
-  Write-Host "Downloading NSSM 2.24 from official release..."
+  Write-Host "Downloading NSSM 2.24 helper..."
   $nssmZip = "$env:TEMP\nssm-2.24.zip"
-  Invoke-WebRequest -UseBasicParsing -Uri "https://nssm.cc/release/nssm-2.24.zip" -OutFile $nssmZip
+  $nssmUrls = @(
+    "https://github.com/imvickykumar999/Non-Sucking-Service-Manager/releases/download/nssm-2.24/nssm-2.24.zip",
+    "https://nssm.cc/release/nssm-2.24.zip"
+  )
+  $downloadOk = $false
+  foreach ($url in $nssmUrls) {
+    try {
+      Invoke-WebRequest -UseBasicParsing -Uri $url -OutFile $nssmZip -TimeoutSec 15
+      if ((Test-Path $nssmZip) -and ((Get-Item $nssmZip).Length -gt 100000)) {
+        $downloadOk = $true
+        break
+      }
+    } catch { }
+  }
+  if (-not $downloadOk) {
+    throw "Failed to download NSSM helper from available mirror sources."
+  }
+
   Expand-Archive -Path $nssmZip -DestinationPath "$env:TEMP\nssm-tmp" -Force
   $extractedExe = "$env:TEMP\nssm-tmp\nssm-2.24\win64\nssm.exe"
 
@@ -74,7 +93,8 @@ if (-not (Test-Path $nssmExe)) {
   Remove-Item $nssmZip, "$env:TEMP\nssm-tmp" -Recurse -Force -ErrorAction SilentlyContinue
   Write-Host "NSSM verified successfully (SHA256 matched)."
 }
-& $nssmExe version
+$verInfo = (Get-Item $nssmExe).VersionInfo
+Write-Host "NSSM helper verified: $($verInfo.ProductName) (v$($verInfo.ProductVersion))"
 Write-Gap
 
 # 3) OpenConnect CLI Dependency Verification
@@ -90,7 +110,8 @@ if (-not (Test-Path $ocExe)) {
 if (-not (Test-Path $ocExe)) {
   throw "openconnect.exe not found at $ocExe after installation."
 }
-& $ocExe --version
+$ocVer = (& $ocExe --version 2>&1 | Select-Object -First 1)
+Write-Host "OpenConnect CLI verified: $ocVer"
 Write-Gap
 
 # 4) Write Profile Metadata
@@ -115,41 +136,166 @@ try {
   [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr)
 }
 $ss = $null
-# Restrict permissions: SYSTEM and local Administrators only
-icacls (Join-Path $dir "pw.bin") /inheritance:r /grant "SYSTEM:F" /grant "Administrators:F" | Out-Null
+# Restrict permissions: SYSTEM and local Administrators only (language-neutral SIDs)
+icacls (Join-Path $dir "pw.bin") /inheritance:r /grant "*S-1-5-18:F" /grant "*S-1-5-32-544:F" | Out-Null
 Write-Gap
 
 # 6) Acquire Server Certificate Fingerprint (pin-sha256)
 Write-Step "[6/7] Probing server certificate pin (RFC7469)..."
 $pin = $null
-try {
-  $enc2 = [System.IO.File]::ReadAllBytes((Join-Path $dir "pw.bin"))
-  $raw2 = [System.Security.Cryptography.ProtectedData]::Unprotect($enc2, $null, 'LocalMachine')
-  $pw2 = [System.Text.Encoding]::Unicode.GetString($raw2)
-  [System.Array]::Clear($raw2, 0, $raw2.Length)
-  $probeInput = "$pw2`nno`n"
-  $pw2 = $null
-  $job = Start-Job -ScriptBlock {
-    param($exe, $u, $url, $in)
-    $in | & $exe --protocol=fortinet -u $u --passwd-on-stdin $url 2>&1 | Out-String
-  } -ArgumentList $ocExe, $vpnUser, $serverUrl, $probeInput
-  Wait-Job $job -Timeout 30 | Out-Null
-  $probeOut = ""
-  try { $probeOut = (Receive-Job $job -ErrorAction SilentlyContinue | Out-String) } catch { }
-  try { Stop-Job $job -ErrorAction SilentlyContinue | Out-Null } catch { }
-  Remove-Job $job -Force -ErrorAction SilentlyContinue
-  if ($probeOut -match '(pin-sha256:[A-Za-z0-9+/]{40,}={0,2})') { $pin = $Matches[1] }
-} catch {
-  Write-Warning "Automatic pin probing failed: $($_.Exception.Message)"
+
+# Define .NET native SPKI extractor if not already present
+if (-not ([System.Management.Automation.PSTypeName]'OpenConnectPinProbe').Type) {
+  $csharpCode = @"
+using System;
+using System.Net.Sockets;
+using System.Net.Security;
+using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
+
+public static class OpenConnectPinProbe {
+    public static string ProbePin(string host, int port, int timeoutMs = 5000) {
+        using (var client = new TcpClient()) {
+            var ar = client.BeginConnect(host, port, null, null);
+            if (!ar.AsyncWaitHandle.WaitOne(timeoutMs)) {
+                throw new TimeoutException("TCP connection timed out.");
+            }
+            client.EndConnect(ar);
+            using (var ssl = new SslStream(client.GetStream(), false, (sender, cert, chain, err) => true)) {
+                var authTask = ssl.AuthenticateAsClientAsync(host);
+                if (!authTask.Wait(timeoutMs)) {
+                    throw new TimeoutException("SSL handshake timed out.");
+                }
+                if (ssl.RemoteCertificate == null) {
+                    throw new InvalidOperationException("No remote certificate received.");
+                }
+                var cert = new X509Certificate2(ssl.RemoteCertificate);
+                byte[] spki = ExtractSpki(cert.RawData);
+                if (spki == null) {
+                    throw new InvalidOperationException("Failed to extract SubjectPublicKeyInfo.");
+                }
+                using (var sha = SHA256.Create()) {
+                    byte[] hash = sha.ComputeHash(spki);
+                    return "pin-sha256:" + Convert.ToBase64String(hash);
+                }
+            }
+        }
+    }
+
+    private static byte[] ExtractSpki(byte[] certDer) {
+        try {
+            int offset = 0;
+            if (certDer[offset++] != 0x30) return null;
+            ReadLength(certDer, ref offset);
+            if (certDer[offset++] != 0x30) return null;
+            ReadLength(certDer, ref offset);
+            
+            if (certDer[offset] == 0xA0) {
+                offset++;
+                int vLen = ReadLength(certDer, ref offset);
+                offset += vLen;
+            }
+            if (certDer[offset++] != 0x02) return null;
+            int sLen = ReadLength(certDer, ref offset);
+            offset += sLen;
+            if (certDer[offset++] != 0x30) return null;
+            int sigLen = ReadLength(certDer, ref offset);
+            offset += sigLen;
+            if (certDer[offset++] != 0x30) return null;
+            int issLen = ReadLength(certDer, ref offset);
+            offset += issLen;
+            if (certDer[offset++] != 0x30) return null;
+            int valLen = ReadLength(certDer, ref offset);
+            offset += valLen;
+            if (certDer[offset++] != 0x30) return null;
+            int subLen = ReadLength(certDer, ref offset);
+            offset += subLen;
+            
+            int spkiStart = offset;
+            if (certDer[offset++] != 0x30) return null;
+            int spkiLen = ReadLength(certDer, ref offset);
+            int totalBytes = (offset - spkiStart) + spkiLen;
+            byte[] spki = new byte[totalBytes];
+            Array.Copy(certDer, spkiStart, spki, 0, totalBytes);
+            return spki;
+        } catch {
+            return null;
+        }
+    }
+
+    private static int ReadLength(byte[] data, ref int offset) {
+        byte b = data[offset++];
+        if ((b & 0x80) == 0) return b;
+        int count = b & 0x7F;
+        int len = 0;
+        for (int i = 0; i < count; i++) {
+            len = (len << 8) | data[offset++];
+        }
+        return len;
+    }
 }
+"@
+  Add-Type -TypeDefinition $csharpCode -Language CSharp
+}
+
+# 1) Try fast, direct .NET SPKI probe
+try {
+  $pin = [OpenConnectPinProbe]::ProbePin($vpnHost, [int]$vpnPort, 5000)
+} catch {
+  Write-Warning "Direct .NET certificate probe failed: $($_.Exception.Message)"
+}
+
+# 2) Fallback to OpenConnect CLI probe if .NET probe did not succeed
+if ([string]::IsNullOrWhiteSpace($pin) -and (Test-Path $ocExe)) {
+  try {
+    $psi = New-Object System.Diagnostics.ProcessStartInfo
+    $psi.FileName = $ocExe
+    $psi.Arguments = "--protocol=fortinet -u probe $serverUrl"
+    $psi.UseShellExecute = $false
+    $psi.RedirectStandardInput = $true
+    $psi.RedirectStandardOutput = $true
+    $psi.RedirectStandardError = $true
+    $psi.CreateNoWindow = $true
+
+    $proc = [System.Diagnostics.Process]::Start($psi)
+    $proc.StandardInput.WriteLine("no")
+    $proc.StandardInput.Close()
+
+    $stdout = $proc.StandardOutput.ReadToEnd()
+    $stderr = $proc.StandardError.ReadToEnd()
+    $proc.WaitForExit(7000) | Out-Null
+    if (-not $proc.HasExited) { try { $proc.Kill() } catch { } }
+
+    $combined = "$stdout`n$stderr"
+    if ($combined -match '(pin-sha256:[A-Za-z0-9+/]{40,}={0,2})') {
+      $pin = $Matches[1]
+    }
+  } catch {
+    Write-Warning "CLI certificate probe fallback failed: $($_.Exception.Message)"
+  }
+}
+
+# 3) Fallback to manual entry or verify network connectivity
 if ([string]::IsNullOrWhiteSpace($pin)) {
-  if ($probeOut -match 'Failed to connect|Failed to open HTTPS connection|Connection (refused|timed out)|Could not connect') {
+  # Verify if remote host and port are actually reachable
+  $canConnect = $false
+  try {
+    $client = New-Object System.Net.Sockets.TcpClient
+    $ar = $client.BeginConnect($vpnHost, [int]$vpnPort, $null, $null)
+    $canConnect = $ar.AsyncWaitHandle.WaitOne(3000)
+    $client.Close()
+  } catch { }
+
+  if (-not $canConnect) {
     throw "Cannot connect to server. Please verify address and port: $serverUrl"
   }
+
   Write-Host "Automatic pin discovery failed. Please paste the pin-sha256 value manually."
   $pin = (Read-Host "Full pin-sha256 value (including pin-sha256:)").Trim()
 }
+
 if ($pin -notmatch '^pin-sha256:[A-Za-z0-9+/]{40,}={0,2}$') { throw "Invalid certificate pin format: $pin" }
+Write-Host "Server certificate pin: $pin"
 Set-Content (Join-Path $dir "pin.txt") $pin -NoNewline -Encoding ascii
 "protocol=fortinet", "server=$serverUrl", "user=$vpnUser", "servercert=$pin" | Set-Content (Join-Path $dir "openconnect.conf") -Encoding ascii
 Write-Gap
@@ -158,10 +304,11 @@ Write-Gap
 Write-Step "[7/7] Registering managed Windows Service ($svcName)..."
 $exists = $null -ne (Get-Service -Name $svcName -ErrorAction SilentlyContinue)
 if (-not $exists) {
-  & $nssmExe install $svcName C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
+  & $nssmExe install $svcName C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe 2>&1 | Out-Null
+  Write-Host "Service '$svcName' registered successfully."
 } else {
   Write-Host "Service '$svcName' already exists. Updating configuration."
-  try { & $nssmExe stop $svcName | Out-Null } catch { }
+  try { & $nssmExe stop $svcName 2>&1 | Out-Null } catch { }
 }
 
 $dispatcherPs1 = Join-Path $binDir 'openconnectsg.ps1'
@@ -174,6 +321,7 @@ Set-ItemProperty $base AppStdout (Join-Path $logs "out.log")
 Set-ItemProperty $base AppStderr (Join-Path $logs "err.log")
 Set-ItemProperty $base AppRotateFiles 1 -Type DWord
 Set-ItemProperty $base AppRotateBytes 1048576 -Type DWord
+Set-ItemProperty $base AppThrottle 5000 -Type DWord
 
 $appExit = Join-Path $base "AppExit"
 if (-not (Test-Path $appExit)) { New-Item -Path $appExit -Force | Out-Null }
@@ -182,8 +330,47 @@ Set-ItemProperty $base Start -Value SERVICE_AUTO_START
 Set-ItemProperty $key  DisplayName $dispName
 Set-Service -Name $svcName -StartupType Automatic
 
-& $nssmExe start $svcName
-Start-Sleep 5
-& $nssmExe status $svcName
-Write-Host "Profile setup complete. Run 'openconnectsg' to check status."
+Write-Host "Starting service '$svcName'..."
+$prevEAP = $ErrorActionPreference
+$ErrorActionPreference = 'SilentlyContinue'
+& $nssmExe start $svcName *>$null
+$ErrorActionPreference = $prevEAP
+
+# Wait up to 10 seconds for Running status
+$svcStatus = 'Unknown'
+for ($i = 0; $i -lt 10; $i++) {
+  Start-Sleep -Seconds 1
+  $svcObj = Get-Service -Name $svcName -ErrorAction SilentlyContinue
+  if ($svcObj) {
+    $svcStatus = [string]$svcObj.Status
+    if ($svcStatus -eq 'Running') { break }
+  }
+}
+
+$errLogFile = Join-Path $logs "err.log"
+if ($svcStatus -eq 'Running') {
+  Write-Host "Service status: Running"
+  Write-Host "Profile setup complete. VPN tunnel is active!"
+} else {
+  $outLogFile = Join-Path $logs "out.log"
+  $combined = ""
+  if (Test-Path $errLogFile) { $combined += "`n" + ((Get-Content $errLogFile -Tail 5 -ErrorAction SilentlyContinue) -join "`n") }
+  if (Test-Path $outLogFile) { $combined += "`n" + ((Get-Content $outLogFile -Tail 5 -ErrorAction SilentlyContinue) -join "`n") }
+  if ($combined -match 'sslvpn_login_permission_denied|Permission denied') {
+    Write-Warning "Authentication failed: VPN server returned 'Permission denied'."
+    Write-Host "Please verify: 1) Password accuracy, 2) User group/authorization policy on FortiGate, 3) Wait if locked out."
+  } elseif ($combined -match 'Too many bad login attempts') {
+    Write-Warning "Authentication blocked: Too many bad login attempts detected by VPN server."
+    Write-Host "Please wait a few minutes for the server lockout timer to expire, then retry."
+  } elseif ($combined -match 'Failed to complete authentication|fgetws \(stdin\)') {
+    Write-Warning "Authentication failed: VPN server rejected credentials or interactive prompt timed out."
+    Write-Host "Please verify your credentials and run 'openconnectsg setup' again."
+  } elseif (-not [string]::IsNullOrWhiteSpace($combined.Trim())) {
+    Write-Warning "Service encountered an issue during startup:"
+    Write-Host "  Error detail:"
+    Write-Host "  $($combined.Trim())"
+  } else {
+    Write-Host "Service registered. Run 'openconnectsg connect' to start tunnel."
+  }
+}
 Write-Gap

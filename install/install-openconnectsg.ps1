@@ -1,4 +1,4 @@
-﻿#Requires -RunAsAdministrator
+#Requires -RunAsAdministrator
 <#
 .SYNOPSIS
   openconnectsg system installer - Deploys openconnectsg binaries to C:\Program Files\OpenConnect\bin
@@ -25,9 +25,26 @@ param(
   [string]$Dest = 'C:\Program Files\OpenConnect\repo',
   [string]$BinDir = 'C:\Program Files\OpenConnect\bin',
   [switch]$SkipClone,
-  [string]$SourceDir
+  [string]$SourceDir,
+  [switch]$Uninstall,
+  [string]$Scope
 )
 $ErrorActionPreference = 'Stop'
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$OutputEncoding = [System.Text.Encoding]::UTF8
+
+if ($Uninstall) {
+  $targetPs1 = Join-Path $BinDir 'openconnectsg.ps1'
+  if (-not (Test-Path $targetPs1)) {
+    $targetPs1 = Join-Path (Join-Path (Split-Path -Parent $PSScriptRoot) 'src') 'openconnectsg.ps1'
+  }
+  if (Test-Path $targetPs1) {
+    & $targetPs1 uninstall $Scope
+    exit $LASTEXITCODE
+  } else {
+    throw "openconnectsg.ps1 not found to perform uninstallation."
+  }
+}
 
 # Auto-detect local source directory
 if (-not $SkipClone -and [string]::IsNullOrWhiteSpace($RepoUrl)) {

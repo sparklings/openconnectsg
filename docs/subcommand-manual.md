@@ -243,7 +243,48 @@ openconnectsg <서브커맨드> [인자1] [인자2] ...
 
 ---
 
-### 3.9. `version` (버전 확인)
+### 3.9. `uninstall` / `un` / `purge` (도구 및 의존성 삭제)
+
+등록된 모든 VPN 터널과 서비스를 중지 및 해제하고, 사용자가 선택한 범위에 따라 `openconnectsg` 또는 OpenConnect CLI/NSSM을 삭제합니다.
+
+- **문법**:
+  ```powershell
+  openconnectsg uninstall [<scope>]
+  openconnectsg un [<scope>]        # 단축 별칭
+  openconnectsg purge [<scope>]     # 별칭
+  ```
+- **인자**:
+  - `<scope>` *(선택)*: 삭제 범위 (`app`: openconnectsg만 삭제 / `full`: CLI 및 NSSM 포함 전체 삭제). 생략 시 대화형 프롬프트가 표시됩니다.
+- **삭제 범위 (Scope)**:
+  1. **openconnectsg only (`app`)**:
+     - 모든 등록된 윈도우 서비스 중지 및 등록 해제
+     - `profiles` 및 `bin` 디렉터리 삭제
+     - 시스템 PATH에서 `bin` 제거
+     - OpenConnect CLI(`openconnect.exe`) 및 NSSM 유지
+  2. **Full Purge (`full`)**:
+     - `openconnectsg` 전체 삭제
+     - OpenConnect CLI 무인 제거 및 디렉터리 정리
+     - NSSM(`C:\Program Files\nssm`) 디렉터리 완전 삭제
+     - 모든 시스템 환경변수 정리
+- **실행 예시**:
+  ```powershell
+  > openconnectsg uninstall
+  ========================================
+      openconnectsg Uninstaller
+  ========================================
+
+  Select uninstallation scope:
+    [1] openconnectsg only (Recommended)
+    [2] Full Purge
+    [q] Cancel / Abort
+
+  Enter your choice [1/2/q]: 1
+  Are you sure you want to proceed with uninstallation? (Type 'yes' to proceed): yes
+  ```
+
+---
+
+### 3.10. `version` (버전 확인)
 
 현재 설치된 `openconnectsg`의 버전을 확인합니다.
 
@@ -260,7 +301,7 @@ openconnectsg <서브커맨드> [인자1] [인자2] ...
 
 ---
 
-### 3.10. `help` (도움말 표시)
+### 3.11. `help` (도움말 표시)
 
 전체 서브커맨드 요약 안내문을 출력합니다.
 

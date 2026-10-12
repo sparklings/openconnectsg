@@ -1,4 +1,4 @@
-﻿#Requires -Version 5.1
+#Requires -Version 5.1
 <#
 .SYNOPSIS
   openconnectsg - Unified CLI tool for OpenConnect VPN profile management and service orchestration.
@@ -11,6 +11,8 @@
   Exit codes: 0 Success, 1 Runtime error, 2 Usage error.
 #>
 $ErrorActionPreference = 'Stop'
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$OutputEncoding = [System.Text.Encoding]::UTF8
 $script:Version = '0.1.0'
 
 $ocRoot      = 'C:\Program Files\OpenConnect'
@@ -154,7 +156,23 @@ function Do-Connect {
   $final = Wait-ServiceStatus $t.Name 'Running' 15
   if ($final -ne 'Running') {
     Write-Host "Warning: Service failed to reach Running state (Current: $final)"
-    Write-Host "  Error Log: $root\$($t.Name)\logs\err.log"
+    $errFile = "$root\$($t.Name)\logs\err.log"
+    $outFile = "$root\$($t.Name)\logs\out.log"
+    $combined = ""
+    if (Test-Path $errFile) { $combined += "`n" + ((Get-Content $errFile -Tail 5 -ErrorAction SilentlyContinue) -join "`n") }
+    if (Test-Path $outFile) { $combined += "`n" + ((Get-Content $outFile -Tail 5 -ErrorAction SilentlyContinue) -join "`n") }
+    if ($combined -match 'sslvpn_login_permission_denied|Permission denied') {
+      Write-Warning "Authentication failed: VPN server returned 'Permission denied'."
+      Write-Host "  Possible causes: Server-side account authorization policy, user group restrictions, or invalid credentials."
+    } elseif ($combined -match 'Too many bad login attempts') {
+      Write-Warning "Authentication blocked: Too many bad login attempts. Please wait a few minutes before trying again."
+    } elseif ($combined -match 'Failed to complete authentication|fgetws') {
+      Write-Warning "Authentication failed: VPN server rejected credentials or interactive prompt timed out."
+    } elseif (-not [string]::IsNullOrWhiteSpace($combined.Trim())) {
+      Write-Host "  Error detail:"
+      Write-Host "  $($combined.Trim())"
+    }
+    Write-Host "  Log files: $errFile | $outFile"
     return 1
   }
   Write-Host "Status: Running"
@@ -259,6 +277,158 @@ function Do-Setup {
   return $LASTEXITCODE
 }
 
+function Do-Uninstall {
+  param([string]$ScopeArg)
+
+  # Check administrative privileges
+  $isAdmin = $false
+  try {
+    $id = [System.Security.Principal.WindowsIdentity]::GetCurrent()
+    $p = New-Object System.Security.Principal.WindowsPrincipal($id)
+    $isAdmin = $p.IsInRole([System.Security.Principal.WindowsBuiltInRole]::Administrator)
+  } catch { }
+
+  if (-not $isAdmin) {
+    throw "Administrative privileges are required to uninstall. Please run in an elevated administrator shell."
+  }
+
+  Write-Host "========================================"
+  Write-Host "    openconnectsg Uninstaller"
+  Write-Host "========================================"
+  Write-Host ""
+
+  # Determine scope
+  $mode = $null
+  if ($ScopeArg -match '^(full|all|--all|--full)$') {
+    $mode = 'full'
+  } elseif ($ScopeArg -match '^(app|only|--app|--app-only|--only-app)$') {
+    $mode = 'app'
+  } else {
+    Write-Host "Select uninstallation scope:"
+    Write-Host "  [1] openconnectsg only (Recommended)"
+    Write-Host "      - Stops and removes all openconnectsg profiles and services"
+    Write-Host "      - Removes openconnectsg files and removes from System PATH"
+    Write-Host "      - Keeps OpenConnect CLI and NSSM binaries intact"
+    Write-Host ""
+    Write-Host "  [2] Full Purge"
+    Write-Host "      - Stops and removes all openconnectsg profiles and services"
+    Write-Host "      - Completely uninstalls OpenConnect CLI (C:\Program Files\OpenConnect)"
+    Write-Host "      - Completely removes NSSM (C:\Program Files\nssm)"
+    Write-Host "      - Purges all associated directories and PATH entries"
+    Write-Host ""
+    Write-Host "  [q] Cancel / Abort"
+    Write-Host ""
+
+    $choice = (Read-Host "Enter your choice [1/2/q]").Trim().ToLower()
+    if ($choice -eq '1') {
+      $mode = 'app'
+    } elseif ($choice -eq '2') {
+      $mode = 'full'
+    } else {
+      Write-Host "Uninstallation cancelled."
+      return 0
+    }
+  }
+
+  $confirm = (Read-Host "Are you sure you want to proceed with uninstallation? (Type 'yes' to proceed)").Trim()
+  if ($confirm -ne 'yes') {
+    Write-Host "Uninstallation cancelled."
+    return 0
+  }
+
+  Write-Host ""
+  Write-Host "[1/3] Terminating active tunnels and unregistering services..."
+  $services = @(Get-Service -Name "openconnect*" -ErrorAction SilentlyContinue)
+  foreach ($s in $services) {
+    Write-Host "  Stopping service: $($s.Name)"
+    try {
+      if (Test-Path $nssm) {
+        & $nssm stop $s.Name 2>&1 | Out-Null
+        & $nssm remove $s.Name confirm 2>&1 | Out-Null
+      } else {
+        Stop-Service -Name $s.Name -Force -ErrorAction SilentlyContinue
+        & sc.exe delete $s.Name 2>&1 | Out-Null
+      }
+    } catch {
+      Write-Warning "Failed to stop/remove service $($s.Name): $($_.Exception.Message)"
+    }
+  }
+
+  Write-Host "[2/3] Cleaning openconnectsg profiles and System PATH..."
+  # Clean profiles
+  if (Test-Path $root) {
+    Remove-Item $root -Recurse -Force -ErrorAction SilentlyContinue
+    Write-Host "  Purged profiles directory: $root"
+  }
+
+  # Clean bin from PATH
+  $binDir = Join-Path $ocRoot 'bin'
+  $mp = [Environment]::GetEnvironmentVariable('Path', 'Machine')
+  if ($mp) {
+    $paths = ($mp -split ';') | Where-Object {
+      $p = $_.Trim()
+      $p -and ($p.TrimEnd('\') -ne $binDir.TrimEnd('\'))
+    }
+    $newPath = ($paths -join ';')
+    [Environment]::SetEnvironmentVariable('Path', $newPath, 'Machine')
+    Write-Host "  Removed $binDir from System PATH."
+  }
+
+  # Clean bin folder
+  if (Test-Path $binDir) {
+    Remove-Item $binDir -Recurse -Force -ErrorAction SilentlyContinue
+    Write-Host "  Purged binary directory: $binDir"
+  }
+
+  # Clean repo folder if exists inside OpenConnect
+  $repoDir = Join-Path $ocRoot 'repo'
+  if (Test-Path $repoDir) {
+    Remove-Item $repoDir -Recurse -Force -ErrorAction SilentlyContinue
+  }
+
+  if ($mode -eq 'full') {
+    Write-Host "[3/3] Purging OpenConnect CLI and NSSM..."
+    # NSSM directory
+    $nssmDir = 'C:\Program Files\nssm'
+    if (Test-Path $nssmDir) {
+      Remove-Item $nssmDir -Recurse -Force -ErrorAction SilentlyContinue
+      Write-Host "  Removed NSSM directory: $nssmDir"
+    }
+
+    # Clean NSSM and OpenConnect from System PATH
+    $mpFull = [Environment]::GetEnvironmentVariable('Path', 'Machine')
+    if ($mpFull) {
+      $pathsFull = ($mpFull -split ';') | Where-Object {
+        $p = $_.Trim().TrimEnd('\')
+        $p -and ($p -ne $ocRoot.TrimEnd('\')) -and ($p -ne $nssmDir.TrimEnd('\')) -and ($p -ne $binDir.TrimEnd('\'))
+      }
+      [Environment]::SetEnvironmentVariable('Path', ($pathsFull -join ';'), 'Machine')
+      Write-Host "  Cleaned OpenConnect and NSSM from System PATH."
+    }
+
+    # OpenConnect Uninstaller if present
+    $ocUninstaller = Join-Path $ocRoot 'Uninstall OpenConnect.exe'
+    if (Test-Path $ocUninstaller) {
+      Write-Host "  Running OpenConnect CLI uninstaller..."
+      Start-Process $ocUninstaller -ArgumentList "/S" -Wait -ErrorAction SilentlyContinue
+    }
+    # Remaining OpenConnect directory
+    if (Test-Path $ocRoot) {
+      Remove-Item $ocRoot -Recurse -Force -ErrorAction SilentlyContinue
+      Write-Host "  Purged OpenConnect directory: $ocRoot"
+    }
+    Write-Host ""
+    Write-Host "Full uninstallation completed successfully. All components were removed."
+  } else {
+    Write-Host "[3/3] Preserving OpenConnect CLI and NSSM binaries."
+    Write-Host ""
+    Write-Host "openconnectsg uninstallation completed successfully."
+    Write-Host "OpenConnect CLI and NSSM have been preserved."
+  }
+
+  return 0
+}
+
 # --- Service Daemon Runner (Internal entry point invoked by NSSM) ---
 function Do-ServiceRun {
   param([string]$ServiceName)
@@ -290,7 +460,7 @@ function Do-ServiceRun {
     [System.Array]::Clear($raw, 0, $raw.Length)
 
     $ocExe = Join-Path $ocRoot 'openconnect.exe'
-    $pw | & $ocExe --config $confFile --passwd-on-stdin
+    $pw | & $ocExe --config $confFile --passwd-on-stdin --non-inter
     exit $LASTEXITCODE
   } finally {
     $pw = $null
@@ -312,14 +482,16 @@ Usage:
   openconnectsg alias <profile> <alias>   Assign friendly alias to profile
   openconnectsg default <profile>         Set default profile
   openconnectsg remove <profile>          Remove profile and unregister Windows service
+  openconnectsg uninstall [<scope>]       Uninstall openconnectsg (scope: app or full)
   openconnectsg version                   Display tool version
   openconnectsg help                      Display this help screen
 
 Aliases:
-  ls -> list, up/start -> connect, down/stop -> disconnect, add -> setup, rm -> remove
+  ls -> list, up/start -> connect, down/stop -> disconnect, add -> setup, rm -> remove, un/purge -> uninstall
 
 Identifier:
   <profile> = Index (#) | Alias | Account name | Service name substring
+  <scope>   = app (openconnectsg only) | full (purge CLI & NSSM)
 '@
   Write-Host $usage
 }
@@ -350,6 +522,9 @@ try {
     'remove'       { $exitCode = Do-Remove     (Get-Profiles) $a1 }
     'rm'           { $exitCode = Do-Remove     (Get-Profiles) $a1 }
     'delete'       { $exitCode = Do-Remove     (Get-Profiles) $a1 }
+    'uninstall'    { $exitCode = Do-Uninstall  $a1 }
+    'un'           { $exitCode = Do-Uninstall  $a1 }
+    'purge'        { $exitCode = Do-Uninstall  $a1 }
     'service-run'  { Do-ServiceRun $a1 } # Daemon runner invoked by Windows Service
     'version'      { Write-Host "openconnectsg $script:Version" }
     '-v'           { Write-Host "openconnectsg $script:Version" }
