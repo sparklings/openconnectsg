@@ -1,4 +1,4 @@
-#Requires -RunAsAdministrator
+﻿#Requires -RunAsAdministrator
 <#
 .SYNOPSIS
   openconnectsg profile setup wizard (invoked by 'openconnectsg setup', v0.1.1)
@@ -321,7 +321,6 @@ Set-ItemProperty $base AppStdout (Join-Path $logs "out.log")
 Set-ItemProperty $base AppStderr (Join-Path $logs "err.log")
 Set-ItemProperty $base AppRotateFiles 1 -Type DWord
 Set-ItemProperty $base AppRotateBytes 1048576 -Type DWord
-Set-ItemProperty $base AppThrottle 5000 -Type DWord
 
 $appExit = Join-Path $base "AppExit"
 if (-not (Test-Path $appExit)) { New-Item -Path $appExit -Force | Out-Null }
@@ -336,41 +335,8 @@ $ErrorActionPreference = 'SilentlyContinue'
 & $nssmExe start $svcName *>$null
 $ErrorActionPreference = $prevEAP
 
-# Wait up to 10 seconds for Running status
-$svcStatus = 'Unknown'
-for ($i = 0; $i -lt 10; $i++) {
-  Start-Sleep -Seconds 1
-  $svcObj = Get-Service -Name $svcName -ErrorAction SilentlyContinue
-  if ($svcObj) {
-    $svcStatus = [string]$svcObj.Status
-    if ($svcStatus -eq 'Running') { break }
-  }
-}
-
-$errLogFile = Join-Path $logs "err.log"
-if ($svcStatus -eq 'Running') {
-  Write-Host "Service status: Running"
-  Write-Host "Profile setup complete. VPN tunnel is active!"
-} else {
-  $outLogFile = Join-Path $logs "out.log"
-  $combined = ""
-  if (Test-Path $errLogFile) { $combined += "`n" + ((Get-Content $errLogFile -Tail 5 -ErrorAction SilentlyContinue) -join "`n") }
-  if (Test-Path $outLogFile) { $combined += "`n" + ((Get-Content $outLogFile -Tail 5 -ErrorAction SilentlyContinue) -join "`n") }
-  if ($combined -match 'sslvpn_login_permission_denied|Permission denied') {
-    Write-Warning "Authentication failed: VPN server returned 'Permission denied'."
-    Write-Host "Please verify: 1) Password accuracy, 2) User group/authorization policy on FortiGate, 3) Wait if locked out."
-  } elseif ($combined -match 'Too many bad login attempts') {
-    Write-Warning "Authentication blocked: Too many bad login attempts detected by VPN server."
-    Write-Host "Please wait a few minutes for the server lockout timer to expire, then retry."
-  } elseif ($combined -match 'Failed to complete authentication|fgetws \(stdin\)') {
-    Write-Warning "Authentication failed: VPN server rejected credentials or interactive prompt timed out."
-    Write-Host "Please verify your credentials and run 'openconnectsg setup' again."
-  } elseif (-not [string]::IsNullOrWhiteSpace($combined.Trim())) {
-    Write-Warning "Service encountered an issue during startup:"
-    Write-Host "  Error detail:"
-    Write-Host "  $($combined.Trim())"
-  } else {
-    Write-Host "Service registered. Run 'openconnectsg connect' to start tunnel."
-  }
-}
+Start-Sleep 5
+$statusRaw = (& $nssmExe status $svcName 2>&1 | Out-String).Trim()
+Write-Host "Service status: $statusRaw"
+Write-Host "Profile setup complete. Run 'openconnectsg' to check status."
 Write-Gap

@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 <#
 .SYNOPSIS
   openconnectsg - Unified CLI tool for OpenConnect VPN profile management and service orchestration.
@@ -460,7 +460,7 @@ function Do-ServiceRun {
     [System.Array]::Clear($raw, 0, $raw.Length)
 
     $ocExe = Join-Path $ocRoot 'openconnect.exe'
-    $pw | & $ocExe --config $confFile --passwd-on-stdin --non-inter
+    $pw | & $ocExe --config $confFile --passwd-on-stdin
     exit $LASTEXITCODE
   } finally {
     $pw = $null
