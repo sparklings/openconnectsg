@@ -98,7 +98,8 @@ openconnectsg disconnect all       # 모든 활성 VPN 연결 해제
 | `openconnectsg alias <p> <별칭>` | `label` | 프로필에 호출용 별칭 부여 |
 | `openconnectsg default <p>` | - | 기본 접속 대상 프로필 포인터 지정 |
 | `openconnectsg remove <p>` | `rm`, `delete` | 프로필 구성 삭제 및 Windows 서비스 영구 등록 해제 |
-| `openconnectsg version` | `-v` | 현재 버전 출력 (`0.1.0`) |
+| `openconnectsg uninstall [<s\>]` | `un`, `purge` | 도구 제거 (범위: `app` 앱 전용 삭제, `full` 전체 완전 삭제) |
+| `openconnectsg version` | `-v` | 현재 버전 출력 (`0.1.1`) |
 | `openconnectsg help` | `-h` | CLI 도움말 화면 출력 |
 
 자세한 사용법은 [서브커맨드 메뉴얼](docs/subcommand-manual.md)을 참조하십시오.
@@ -121,7 +122,7 @@ openconnectsg disconnect all       # 모든 활성 VPN 연결 해제
 ## 🔒 필요 의존성 패키지 (Dependencies)
 
 `openconnectsg setup` 실행 시 공식 체크섬을 검증하여 자동으로 다운로드 및 배치됩니다:
-- **NSSM (Non-Sucking Service Manager) 2.24**: Windows 서비스 수명주기 감시 및 데몬화 관리
+- **NSSM (Non-Sucking Service Manager) 2.24**: Windows 서비스 수명주기 감시 및 데몬화 관리 (공식 사이트 및 GitHub 백업 미러 이중화 지원, SHA256 체크섬 검증)
 - **openconnect CLI v9.21 (MinGW64-GnuTLS)**: SSL-VPN 터널링 연결 수립
 
 ---

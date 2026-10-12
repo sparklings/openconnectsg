@@ -75,15 +75,15 @@ powershell -ExecutionPolicy Bypass -File .\install\install-openconnectsg.ps1 -Sk
 ### 4.2. 설치 확인
 ```powershell
 openconnectsg version
-# 출력: openconnectsg 0.1.0
+# 출력: openconnectsg 0.1.1
 ```
 
 ### 4.3. 초기 프로필 등록 마법사 실행
 ```powershell
 openconnectsg setup
 ```
-- 실행 시 필요한 외부 도구(`NSSM 2.24`, `openconnect v9.21`)가 공식 SHA256 체크섬 검증을 거쳐 자동 다운로드 및 설치됩니다.
-- 원격VPN서버의 주소, 포트, 계정, 비밀번호를 순서대로 입력하면 Windows DPAPI 암호화와 서비스 등록이 원스톱으로 완료됩니다.
+- 실행 시 필요한 외부 도구(`NSSM 2.24`, `openconnect v9.21`)가 공식 SHA256 체크섬 검증을 거쳐 자동 다운로드 및 설치됩니다. (공식 사이트 장애 시 검증된 GitHub 미러로 자동 대체)
+- 원격VPN서버의 주소, 포트, 계정, 비밀번호를 순서대로 입력하면 .NET 기반 초고속 인증서 Pin(RFC7469) 추출, Windows DPAPI 암호화 및 서비스 등록이 원스톱으로 완료됩니다.
 
 ---
 
@@ -98,7 +98,30 @@ powershell -ExecutionPolicy Bypass -File .\install\install-openconnectsg.ps1
 
 ---
 
-## 6. 문제 해결 (Troubleshooting)
+## 6. 제거 및 완전 삭제 (Uninstall)
+
+설치된 환경을 깔끔하게 제거할 수 있는 2가지 방법이 제공됩니다:
+
+### 방법 A. CLI 대화형 제거 (`openconnectsg uninstall`)
+```powershell
+# 관리자 권한 터미널에서 실행
+openconnectsg uninstall
+```
+- **[1] openconnectsg only**: 터널 서비스 중지/해제, 프로필 및 바이너리 삭제, PATH 제거 (OpenConnect CLI와 NSSM은 보존)
+- **[2] Full Purge**: 모든 서비스/프로필 삭제 + OpenConnect CLI 및 NSSM 완전 제거 + 시스템 PATH 정리
+
+### 방법 B. 설치 스크립트 기반 제거
+```powershell
+# openconnectsg만 제거
+powershell -ExecutionPolicy Bypass -File .\install\install-openconnectsg.ps1 -Uninstall -Scope app
+
+# 모든 구성 요소 완전 영구 삭제 (Full Purge)
+powershell -ExecutionPolicy Bypass -File .\install\install-openconnectsg.ps1 -Uninstall -Scope full
+```
+
+---
+
+## 7. 문제 해결 (Troubleshooting)
 
 ### Q1. `...스크립트를 실행할 수 없습니다` 오류가 발생합니다.
 - **원인**: Windows의 PowerShell ExecutionPolicy가 `Restricted`로 설정되어 있습니다.
@@ -107,3 +130,9 @@ powershell -ExecutionPolicy Bypass -File .\install\install-openconnectsg.ps1
 ### Q2. `openconnectsg : 용어가 cmdlet, 함수...로 인식되지 않습니다.`
 - **원인**: 설치 후 기존 터미널 창을 그대로 사용 중이어서 변경된 PATH가 로드되지 않았습니다.
 - **조치**: 현재 터미널 창을 닫고 새 창을 여십시오.
+
+### Q3. `Permission denied` 또는 `Too many bad login attempts` 오류가 발생합니다.
+- **원인**:
+  - `Permission denied`: 계정 정보는 유효하나 방화벽 측 SSL-VPN 인가(Authorization) 정책 또는 그룹 권한에 매핑되지 않은 경우입니다.
+  - `Too many bad login attempts`: 연속적인 시도로 인해 방화벽의 브루트포스 차단 타이머가 작동한 상태입니다.
+- **조치**: 차단 타이머의 경우 3~5분 정도 대기 후 다시 시도하시고, 인가 문제는 네트워크 관리자에게 사용자 계정의 SSL-VPN 접근 그룹 권한을 확인하십시오.

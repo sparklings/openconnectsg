@@ -103,7 +103,7 @@ if (-not (($mp -split ';') -contains $BinDir)) {
 # Verification and installation marker
 $cmd = Join-Path $BinDir 'openconnectsg.cmd'
 if (Test-Path $cmd) {
-  $ver = '0.1.0'
+  $ver = '0.1.1'
   $marker = "version=$ver`r`nsource=$SourceDir`r`ninstalled=$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')`r`n"
   [System.IO.File]::WriteAllText((Join-Path $BinDir '.installed'), $marker, (New-Object System.Text.UTF8Encoding($false)))
   Write-Host "Installed openconnectsg $ver."

@@ -1,7 +1,7 @@
-# openconnectsg — OpenConnect 원격접속 자동화 (v0.1.0)
+# openconnectsg — OpenConnect 원격접속 자동화 (v0.1.1)
 
 원격VPN서버 뒤 원격 내부 네트워크 서버자원에 **NSSM + openconnect CLI**로 자동 접속하는 Windows용 경량 CLI 도구.
-초기 프로필 설정부터 백그라운드 데몬 서비스 운영까지 단일 명령 `openconnectsg`로 수행합니다.
+초기 프로필 설정부터 백그라운드 데몬 서비스 운영, 클린 삭제(`uninstall`)까지 단일 명령 `openconnectsg`로 수행합니다.
 
 ---
 
@@ -100,6 +100,9 @@ Get-Content "C:\Program Files\OpenConnect\profiles\<서비스명>\logs\err.log" 
 Get-Content "C:\Program Files\OpenConnect\profiles\<서비스명>\logs\out.log" -Tail 50
 ```
 
+- `Permission denied` 에러 $\rightarrow$ 사용자 계정이 방화벽 측 SSL-VPN 터널 인가 그룹에 포함되어 있는지 확인.
+- `Too many bad login attempts` 에러 $\rightarrow$ 방화벽 측 브루트포스 락아웃 정책 발동 상태. 3~5분 대기 후 재시도.
 - 인증 실패 반복 $\rightarrow$ `openconnectsg setup`으로 계정 및 비밀번호 재등록.
 - 지문 불일치 $\rightarrow$ `profiles\<서비스명>\pin.txt` 갱신.
 - 다중 연결 해제 $\rightarrow$ `openconnectsg disconnect all`.
+- 완전 삭제 및 초기화 $\rightarrow$ `openconnectsg uninstall` (또는 `-Scope full`).
