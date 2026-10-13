@@ -13,7 +13,7 @@
 $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $OutputEncoding = [System.Text.Encoding]::UTF8
-$script:Version = '0.1.2'
+$script:Version = '0.1.2a'
 
 $ocRoot      = 'C:\Program Files\OpenConnect'
 $root        = Join-Path $ocRoot 'profiles'
@@ -690,6 +690,15 @@ function Do-ServiceRun {
     try {
       $confLines = Get-Content $confFile -ErrorAction SilentlyContinue | Where-Object { $_ -notmatch '^interface=' }
       Set-Content -Path $confFile -Value $confLines -Encoding ascii
+    } catch {}
+
+    # Clean up any stale/ghost Wintun devices in error state to prevent CM_PROB_DISABLED_SERVICE (0x20) / timeout (0x102)
+    try {
+      Get-PnpDevice -Class Net -ErrorAction SilentlyContinue | Where-Object {
+        $_.InstanceId -like "*WINTUN*" -and ($_.Status -ne 'OK' -or $_.Problem -ne 'CM_PROB_NONE')
+      } | ForEach-Object {
+        & pnputil /remove-device $_.InstanceId 2>&1 | Out-Null
+      }
     } catch {}
 
     $enc = [System.IO.File]::ReadAllBytes($pwFile)
