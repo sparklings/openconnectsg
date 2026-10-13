@@ -1,4 +1,4 @@
-﻿# openconnectsg 설치 가이드 (Installation Guide)
+# openconnectsg 설치 가이드 (Installation Guide)
 
 이 문서는 `openconnectsg`를 Windows 환경에 배포하고 시스템 전역 CLI 명령어로 등록하는 전체 설치 과정과 환경 설정 가이드입니다.
 
@@ -40,28 +40,29 @@ Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 
 ## 3. 설치 방법 (Installation Methods)
 
-### 방법 A. 저장소 Clone 후 로컬 설치 (가장 권장)
+### 방법 A. 저장소 Clone 후 설치 (Git 설치 환경)
 
 ```powershell
 # 1) 저장소를 C:\Program Files\OpenConnect\repo 에 clone
 git clone https://github.com/sparklings/openconnectsg.git "C:\Program Files\OpenConnect\repo"
 
-# 2) 설치 스크립트 실행 (로컬 소스를 자동으로 감지하여 bin 배치 및 PATH 등록)
+# 2) 설치 스크립트 실행 (bin 자동 배치 및 PATH 등록)
 powershell -ExecutionPolicy Bypass -File "C:\Program Files\OpenConnect\repo\install\install-openconnectsg.ps1"
 ```
 
-### 방법 B. 단일 인스톨러 파일로 원격 자동 설치
+### 방법 B. 웹 1-Line 자동 설치 (Git 미설치 환경 지원)
+
+Git이나 개발 도구가 없어도 PowerShell 기본 명령어로 원격 최신 코드를 즉시 내려받아 설치합니다:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\install-openconnectsg.ps1 `
-  -RepoUrl "https://github.com/sparklings/openconnectsg.git" `
-  -Dest    "C:\Program Files\OpenConnect\repo"
+irm https://raw.githubusercontent.com/sparklings/openconnectsg/main/install/install-openconnectsg.ps1 | iex
 ```
 
-### 방법 C. 오프라인 / 폐쇄망 설치 (ZIP 다운로드 환경)
+### 방법 C. 오프라인 / 수동 ZIP 다운로드 설치
 
+1. GitHub에서 [ZIP 다운로드](https://github.com/sparklings/openconnectsg/archive/refs/heads/main.zip) 후 압축 해제
+2. 압축 해제한 디렉터리 내에서 관리자 권한으로 실행:
 ```powershell
-# 압축을 해제한 프로젝트 루트 디렉터리로 이동 후 실행
 powershell -ExecutionPolicy Bypass -File .\install\install-openconnectsg.ps1 -SkipClone
 ```
 
@@ -69,13 +70,20 @@ powershell -ExecutionPolicy Bypass -File .\install\install-openconnectsg.ps1 -Sk
 
 ## 4. 설치 후 확인 및 초기 설정 (Post-Installation)
 
-### 4.1. 새 터미널 열기
-시스템 환경 변수(PATH) 갱신을 적용받기 위해 **현재 터미널 창을 닫고 새로운 PowerShell 창을 엽니다**.
+### 4.1. 명령어 활성화 (중요)
+
+Windows는 설치 프로그램(자식 프로세스)이 시스템 PATH를 변경해도 **이미 열려 있는 기존 터미널 세션에는 새 PATH가 자동으로 갱신되지 않습니다**.
+
+* **선택 1 (권장):** **새 PowerShell 창**을 열면 `openconnectsg` 명령어가 즉시 인식됩니다.
+* **선택 2:** 현재 열려 있는 창에서 바로 사용하려면 아래 명령어로 환경 변수를 즉시 다시 로드합니다:
+  ```powershell
+  $env:Path = [Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' + [Environment]::GetEnvironmentVariable('Path', 'User')
+  ```
 
 ### 4.2. 설치 확인
 ```powershell
 openconnectsg version
-# 출력: openconnectsg 0.1.1b
+# 출력: openconnectsg 0.1.2
 ```
 
 ### 4.3. 초기 프로필 등록 마법사 실행

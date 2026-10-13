@@ -129,6 +129,15 @@ if (Test-Path $cmd) {
   & $cmd version
 }
 
-Write-Host "Installation completed successfully."
-Write-Host "Next step: Open a new terminal and run 'openconnectsg setup' to add a profile."
+Write-Host "============================================================"
+Write-Host "  Installation completed successfully! (openconnectsg $ver)"
+Write-Host "============================================================"
+Write-Host ""
+Write-Host "[중요] 현재 터미널 창에서 바로 사용하시려면 아래 명령을 한 번 실행하세요:"
+Write-Host "  `$env:Path = [Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' + [Environment]::GetEnvironmentVariable('Path', 'User')"
+Write-Host ""
+Write-Host "또는 '새 PowerShell 창'을 열면 'openconnectsg' 명령어를 바로 사용할 수 있습니다:"
+Write-Host "  openconnectsg setup       # VPN 프로필 등록 마법사"
+Write-Host "  openconnectsg version     # 버전 확인"
+Write-Host "============================================================"
 
