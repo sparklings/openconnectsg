@@ -761,16 +761,17 @@ namespace OpenConnectSg {
     $writer = New-Object System.IO.StreamWriter($proc.StandardInput.BaseStream, (New-Object System.Text.UTF8Encoding($false)))
     $writer.WriteLine($pw)
     $writer.Flush()
-    $writer.Close()
+    # Keep stdin stream open while openconnect is running to prevent EOF logout
 
     $hbThread = [OpenConnectSg.StderrFilter]::StartProcessing($proc.StandardError, $errLog, $hbStatus)
 
     $proc.WaitForExit()
-    if ($hbThread) { $hbThread.Join(2000) }
+    if ($hbThread) { [void]$hbThread.Join(2000) }
+    try { $writer.Close() } catch {}
     exit $proc.ExitCode
   } finally {
     $pw = $null
-    $mutex.ReleaseMutex()
+    try { $mutex.ReleaseMutex() } catch {}
   }
 }
 
