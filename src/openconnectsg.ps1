@@ -138,6 +138,13 @@ function Wait-ServiceStatus {
 function Do-Connect {
   param($profiles, $token)
   $t = Resolve-Profile $profiles $token
+  $profConf = Join-Path (Join-Path $root $t.Name) 'openconnect.conf'
+  if (Test-Path $profConf) {
+    try {
+      $cLines = Get-Content $profConf -ErrorAction SilentlyContinue | Where-Object { $_ -notmatch '^interface=' }
+      Set-Content -Path $profConf -Value $cLines -Encoding ascii
+    } catch {}
+  }
   # Single active connection policy: disconnect any other active tunnels
   foreach ($p in $profiles) {
     if ($p.Name -ne $t.Name -and $p.Status -eq 'Running') {
@@ -678,6 +685,12 @@ function Do-ServiceRun {
     $confFile = Join-Path $dir 'openconnect.conf'
     if (-not (Test-Path $pwFile))   { throw "Password artifact not found: $pwFile" }
     if (-not (Test-Path $confFile)) { throw "Configuration file not found: $confFile" }
+
+    # Sanitize configuration: strip problematic interface= override causing Wintun adapter creation timeout
+    try {
+      $confLines = Get-Content $confFile -ErrorAction SilentlyContinue | Where-Object { $_ -notmatch '^interface=' }
+      Set-Content -Path $confFile -Value $confLines -Encoding ascii
+    } catch {}
 
     $enc = [System.IO.File]::ReadAllBytes($pwFile)
     $raw = [System.Security.Cryptography.ProtectedData]::Unprotect($enc, $null, 'LocalMachine')
