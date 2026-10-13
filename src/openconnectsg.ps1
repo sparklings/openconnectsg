@@ -1,4 +1,4 @@
-﻿#Requires -Version 5.1
+#Requires -Version 5.1
 <#
 .SYNOPSIS
   openconnectsg - Unified CLI tool for OpenConnect VPN profile management and service orchestration.
@@ -13,7 +13,7 @@
 $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $OutputEncoding = [System.Text.Encoding]::UTF8
-$script:Version = '0.1.1b'
+$script:Version = '0.1.2'
 
 $ocRoot      = 'C:\Program Files\OpenConnect'
 $root        = Join-Path $ocRoot 'profiles'
@@ -209,11 +209,76 @@ function Do-Disconnect {
 
 function Do-Status {
   param($profiles, $token)
-  if ([string]::IsNullOrWhiteSpace($token)) { Show-List $profiles; return }
+  if ([string]::IsNullOrWhiteSpace($token)) {
+    if (Test-Path $defaultFile) {
+      $def = (Get-Content $defaultFile -Raw).Trim()
+      $hit = @($profiles | Where-Object { $_.Name -eq $def })
+      if ($hit.Count -eq 1) { $token = $hit[0].Name }
+    }
+    if ([string]::IsNullOrWhiteSpace($token)) {
+      $running = @($profiles | Where-Object { $_.Status -eq 'Running' })
+      if ($running.Count -eq 1) { $token = $running[0].Name }
+    }
+  }
+
+  if ([string]::IsNullOrWhiteSpace($token)) {
+    Show-List $profiles
+    return 0
+  }
+
   $t = Resolve-Profile $profiles $token
   $s = Get-Service -Name $t.Name -ErrorAction SilentlyContinue
   $status = if ($s) { [string]$s.Status } else { 'N/A' }
-  Write-Host ('{0}  {1}  {2}  {3}' -f $t.Name, $t.User, $t.Alias, $status)
+
+  Write-Host "Profile Details:"
+  Write-Host "  Name       : $($t.Name)"
+  Write-Host "  Index      : $($t.Index)"
+  Write-Host "  Alias      : $(if ($t.Alias) { $t.Alias } else { '(none)' })"
+  Write-Host "  User       : $($t.User)"
+  Write-Host "  Server     : $($t.Server)"
+  Write-Host "  Status     : $status"
+  Write-Host "  Default    : $(if ($t.IsDefault) { 'Yes' } else { 'No' })"
+
+  $profDir = Join-Path $root $t.Name
+  $hbFile = Join-Path $profDir 'heartbeat.status'
+  if ($status -eq 'Running') {
+    if (Test-Path $hbFile) {
+      $hbRaw = Get-Content $hbFile -Raw -ErrorAction SilentlyContinue
+      $lastRecv = if ($hbRaw -match 'LastReceived=([^\r\n]+)') { $matches[1].Trim() } else { $null }
+      $hbCount  = if ($hbRaw -match 'Count=(\d+)') { $matches[1].Trim() } else { '0' }
+      if ($lastRecv) {
+        try {
+          $secAgo = [math]::Max(0, [int]((Get-Date) - [DateTime]::Parse($lastRecv)).TotalSeconds)
+          if ($secAgo -le 30) {
+            Write-Host "  Heartbeat  : ALIVE ($secAgo s ago, packets: $hbCount)" -ForegroundColor Green
+          } elseif ($secAgo -le 90) {
+            Write-Host "  Heartbeat  : IDLE ($secAgo s ago, packets: $hbCount)" -ForegroundColor Yellow
+          } else {
+            Write-Host "  Heartbeat  : STALE ($secAgo s ago, packets: $hbCount)" -ForegroundColor Red
+          }
+        } catch {
+          Write-Host "  Heartbeat  : Recorded ($lastRecv, packets: $hbCount)"
+        }
+      }
+    } else {
+      Write-Host "  Heartbeat  : Waiting for keepalive..." -ForegroundColor DarkGray
+    }
+  }
+
+  $errFile = Join-Path $profDir 'logs\err.log'
+  if (Test-Path $errFile) {
+    $errLen = (Get-Item $errFile).Length
+    if ($errLen -gt 0) {
+      $recentErr = (Get-Content $errFile -Tail 3 -ErrorAction SilentlyContinue) -join "`n"
+      if (-not [string]::IsNullOrWhiteSpace($recentErr.Trim())) {
+        Write-Host "  Recent Error:" -ForegroundColor Red
+        $recentErr.Split("`n") | ForEach-Object {
+          if (-not [string]::IsNullOrWhiteSpace($_)) { Write-Host "    $_" -ForegroundColor DarkRed }
+        }
+      }
+    }
+  }
+
   return 0
 }
 
@@ -459,6 +524,76 @@ function Do-ServiceRun {
     $pw = [System.Text.Encoding]::Unicode.GetString($raw)
     [System.Array]::Clear($raw, 0, $raw.Length)
 
+    $logsDir = Join-Path $dir 'logs'
+    if (-not (Test-Path $logsDir)) { New-Item -ItemType Directory -Path $logsDir -Force | Out-Null }
+    $errLog = Join-Path $logsDir 'err.log'
+    $hbStatus = Join-Path $dir 'heartbeat.status'
+
+    if (-not ('OpenConnectSg.StderrFilter' -as [type])) {
+      $filterCs = @'
+namespace OpenConnectSg {
+  using System;
+  using System.IO;
+  using System.Text.RegularExpressions;
+  using System.Threading;
+
+  public static class StderrFilter {
+    private static readonly Regex HeartbeatRegex = new Regex(
+      @"Unexpected pre-PPP packet header|GFtype\.heartbeat|< 00[0-9a-fA-F]{2}:",
+      RegexOptions.Compiled | RegexOptions.IgnoreCase
+    );
+
+    public static Thread StartProcessing(StreamReader reader, string errLogPath, string hbStatusPath) {
+      Thread thread = new Thread(() => {
+        long count = 0;
+        string line;
+        DateTime lastStatusWrite = DateTime.MinValue;
+
+        using (StreamWriter errWriter = new StreamWriter(errLogPath, true, System.Text.Encoding.UTF8)) {
+          errWriter.AutoFlush = true;
+
+          while ((line = reader.ReadLine()) != null) {
+            if (HeartbeatRegex.IsMatch(line)) {
+              count++;
+              DateTime now = DateTime.Now;
+              if ((now - lastStatusWrite).TotalSeconds >= 2) {
+                lastStatusWrite = now;
+                try {
+                  string content = string.Format(
+                    "LastReceived={0:yyyy-MM-dd HH:mm:ss}\r\nCount={1}\r\nStatus=ALIVE\r\n",
+                    now, count
+                  );
+                  File.WriteAllText(hbStatusPath, content, System.Text.Encoding.UTF8);
+                } catch {}
+              }
+            } else {
+              try {
+                errWriter.WriteLine(line);
+              } catch {}
+            }
+          }
+        }
+
+        if (count > 0) {
+          try {
+            string content = string.Format(
+              "LastReceived={0:yyyy-MM-dd HH:mm:ss}\r\nCount={1}\r\nStatus=STOPPED\r\n",
+              DateTime.Now, count
+            );
+            File.WriteAllText(hbStatusPath, content, System.Text.Encoding.UTF8);
+          } catch {}
+        }
+      });
+      thread.IsBackground = true;
+      thread.Start();
+      return thread;
+    }
+  }
+}
+'@
+      Add-Type -TypeDefinition $filterCs -Language CSharp
+    }
+
     $ocExe = Join-Path $ocRoot 'openconnect.exe'
     $psi = New-Object System.Diagnostics.ProcessStartInfo
     $psi.FileName = $ocExe
@@ -466,7 +601,7 @@ function Do-ServiceRun {
     $psi.UseShellExecute = $false
     $psi.RedirectStandardInput = $true
     $psi.RedirectStandardOutput = $false
-    $psi.RedirectStandardError = $false
+    $psi.RedirectStandardError = $true
     $psi.CreateNoWindow = $true
 
     $proc = [System.Diagnostics.Process]::Start($psi)
@@ -475,7 +610,10 @@ function Do-ServiceRun {
     $writer.Flush()
     $writer.Close()
 
+    $hbThread = [OpenConnectSg.StderrFilter]::StartProcessing($proc.StandardError, $errLog, $hbStatus)
+
     $proc.WaitForExit()
+    if ($hbThread) { $hbThread.Join(2000) }
     exit $proc.ExitCode
   } finally {
     $pw = $null

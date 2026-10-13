@@ -1,10 +1,10 @@
-﻿cff-version: 1.2.0
+cff-version: 1.2.0
 message: "If you use this software, please cite it as below."
 authors:
   - name: "sparklings"
     website: "https://github.com/sparklings"
 title: "openconnectsg: Automated, DPAPI-Secured OpenConnect Windows Service Manager"
-version: 0.1.1b
+version: 0.1.2
 date-released: 2026-10-11
 url: "https://github.com/sparklings/openconnectsg"
 repository-code: "https://github.com/sparklings/openconnectsg"
