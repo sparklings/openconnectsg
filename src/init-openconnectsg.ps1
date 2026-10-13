@@ -1,7 +1,7 @@
 ﻿#Requires -RunAsAdministrator
 <#
 .SYNOPSIS
-  openconnectsg profile setup wizard (invoked by 'openconnectsg setup', v0.1.1a)
+  openconnectsg profile setup wizard (invoked by 'openconnectsg setup', v0.1.1b)
 .DESCRIPTION
   Interactive wizard that prompts for remote VPN host, port, credentials,
   verifies binary dependencies with cryptographic checksums, encrypts credentials via DPAPI,

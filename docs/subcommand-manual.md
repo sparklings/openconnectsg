@@ -296,7 +296,7 @@ openconnectsg <서브커맨드> [인자1] [인자2] ...
   ```
 - **실행 결과**:
   ```powershell
-  openconnectsg 0.1.1a
+  openconnectsg 0.1.1b
   ```
 
 ---

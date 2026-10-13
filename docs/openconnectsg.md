@@ -1,4 +1,4 @@
-﻿# openconnectsg — OpenConnect 원격접속 자동화 (v0.1.1a)
+﻿# openconnectsg — OpenConnect 원격접속 자동화 (v0.1.1b)
 
 원격VPN서버 뒤 원격 내부 네트워크 서버자원에 **NSSM + openconnect CLI**로 자동 접속하는 Windows용 경량 CLI 도구.
 초기 프로필 설정부터 백그라운드 데몬 서비스 운영, 클린 삭제(`uninstall`)까지 단일 명령 `openconnectsg`로 수행합니다.
