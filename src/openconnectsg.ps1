@@ -499,7 +499,8 @@ function Do-Upgrade {
   $binDir = 'C:\Program Files\OpenConnect\bin'
   $installedFile = Join-Path $binDir '.installed'
 
-  $isAdmin = [Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent().IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+  $wp = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
+  $isAdmin = $wp.IsInRole([System.Security.Principal.WindowsBuiltInRole]::Administrator)
   if (-not $isAdmin) {
     Write-Host "Administrative privileges are required to upgrade openconnectsg."
     Write-Host "Requesting elevation via User Account Control (UAC)..."
@@ -516,7 +517,14 @@ function Do-Upgrade {
       Write-Host "Elevation requested (Process ID: $($p.Id)). Please approve the UAC prompt."
       return 0
     } catch {
-      throw "Failed to elevate process. Please run 'openconnectsg upgrade' from an elevated administrator console."
+      try {
+        $sh = New-Object -ComObject Shell.Application
+        $sh.ShellExecute("powershell.exe", $argStr, "", "runas", 1)
+        Write-Host "Elevation requested via ShellExecute. Please approve the UAC prompt."
+        return 0
+      } catch {
+        throw "Failed to elevate process. Please run 'openconnectsg upgrade' from an elevated administrator console."
+      }
     }
   }
 
