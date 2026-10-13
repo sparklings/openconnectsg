@@ -460,8 +460,23 @@ function Do-ServiceRun {
     [System.Array]::Clear($raw, 0, $raw.Length)
 
     $ocExe = Join-Path $ocRoot 'openconnect.exe'
-    $pw | & $ocExe --config $confFile --passwd-on-stdin
-    exit $LASTEXITCODE
+    $psi = New-Object System.Diagnostics.ProcessStartInfo
+    $psi.FileName = $ocExe
+    $psi.Arguments = "--config `"$confFile`" --passwd-on-stdin"
+    $psi.UseShellExecute = $false
+    $psi.RedirectStandardInput = $true
+    $psi.RedirectStandardOutput = $false
+    $psi.RedirectStandardError = $false
+    $psi.CreateNoWindow = $true
+
+    $proc = [System.Diagnostics.Process]::Start($psi)
+    $writer = New-Object System.IO.StreamWriter($proc.StandardInput.BaseStream, (New-Object System.Text.UTF8Encoding($false)))
+    $writer.WriteLine($pw)
+    $writer.Flush()
+    $writer.Close()
+
+    $proc.WaitForExit()
+    exit $proc.ExitCode
   } finally {
     $pw = $null
     $mutex.ReleaseMutex()
