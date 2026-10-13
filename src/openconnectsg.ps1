@@ -149,6 +149,9 @@ function Do-Connect {
   if ($cur -and [string]$cur.Status -eq 'Running') {
     Write-Host "Already connected: $($t.Name)"
   } else {
+    if ($cur -and [string]$cur.Status -eq 'StopPending') {
+      [void](Wait-ServiceStatus $t.Name 'Stopped' 10)
+    }
     Write-Host "connect $($t.Name)"
     [void](Invoke-Nssm @('start', $t.Name))
   }
@@ -696,14 +699,12 @@ namespace OpenConnectSg {
       RegexOptions.Compiled | RegexOptions.IgnoreCase
     );
 
-    public static Thread StartProcessing(StreamReader reader, string errLogPath, string hbStatusPath) {
+    public static Thread StartProcessing(StreamReader reader, string hbStatusPath) {
       Thread thread = new Thread(() => {
-        long count = 0;
-        string line;
-        DateTime lastStatusWrite = DateTime.MinValue;
-
-        using (StreamWriter errWriter = new StreamWriter(errLogPath, true, System.Text.Encoding.UTF8)) {
-          errWriter.AutoFlush = true;
+        try {
+          long count = 0;
+          string line;
+          DateTime lastStatusWrite = DateTime.MinValue;
 
           while ((line = reader.ReadLine()) != null) {
             if (HeartbeatRegex.IsMatch(line)) {
@@ -721,21 +722,21 @@ namespace OpenConnectSg {
               }
             } else {
               try {
-                errWriter.WriteLine(line);
+                Console.Error.WriteLine(line);
               } catch {}
             }
           }
-        }
 
-        if (count > 0) {
-          try {
-            string content = string.Format(
-              "LastReceived={0:yyyy-MM-dd HH:mm:ss}\r\nCount={1}\r\nStatus=STOPPED\r\n",
-              DateTime.Now, count
-            );
-            File.WriteAllText(hbStatusPath, content, System.Text.Encoding.UTF8);
-          } catch {}
-        }
+          if (count > 0) {
+            try {
+              string content = string.Format(
+                "LastReceived={0:yyyy-MM-dd HH:mm:ss}\r\nCount={1}\r\nStatus=STOPPED\r\n",
+                DateTime.Now, count
+              );
+              File.WriteAllText(hbStatusPath, content, System.Text.Encoding.UTF8);
+            } catch {}
+          }
+        } catch {}
       });
       thread.IsBackground = true;
       thread.Start();
@@ -763,7 +764,7 @@ namespace OpenConnectSg {
     $writer.Flush()
     # Keep stdin stream open while openconnect is running to prevent EOF logout
 
-    $hbThread = [OpenConnectSg.StderrFilter]::StartProcessing($proc.StandardError, $errLog, $hbStatus)
+    $hbThread = [OpenConnectSg.StderrFilter]::StartProcessing($proc.StandardError, $hbStatus)
 
     $proc.WaitForExit()
     if ($hbThread) { [void]$hbThread.Join(2000) }
