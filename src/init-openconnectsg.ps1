@@ -297,7 +297,7 @@ if ([string]::IsNullOrWhiteSpace($pin)) {
 if ($pin -notmatch '^pin-sha256:[A-Za-z0-9+/]{40,}={0,2}$') { throw "Invalid certificate pin format: $pin" }
 Write-Host "Server certificate pin: $pin"
 Set-Content (Join-Path $dir "pin.txt") $pin -NoNewline -Encoding ascii
-"protocol=fortinet", "server=$serverUrl", "user=$vpnUser", "servercert=$pin", "interface=OpenConnectSg" | Set-Content (Join-Path $dir "openconnect.conf") -Encoding ascii
+"protocol=fortinet", "server=$serverUrl", "user=$vpnUser", "servercert=$pin" | Set-Content (Join-Path $dir "openconnect.conf") -Encoding ascii
 Write-Gap
 
 # 7) Register NSSM Managed Windows Service

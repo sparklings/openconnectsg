@@ -630,6 +630,11 @@ function Do-Upgrade {
             Set-Content -Path $errPath -Value $null -Force
           }
         }
+        $confPath = Join-Path $_.FullName 'openconnect.conf'
+        if (Test-Path $confPath) {
+          $cLines = Get-Content $confPath -ErrorAction SilentlyContinue | Where-Object { $_ -notmatch '^interface=' }
+          Set-Content -Path $confPath -Value $cLines -Encoding ascii
+        }
       }
     }
 
