@@ -297,17 +297,17 @@ openconnectsg <서브커맨드> [인자1] [인자2] ...
   - `<source_path>` *(선택)*: 업데이트할 Git 저장소 또는 소스 디렉터리 경로. 생략 시 기존 설치 시 기록된 소스 위치를 자동으로 참조합니다.
 - **주요 동작**:
   1. 관리자 권한을 확인하고, 일반 터미널인 경우 UAC 승격 팝업을 호출하여 안전하게 수행합니다.
-  2. Git 소스인 경우 `git pull --ff-only`로 최신 변경사항을 반영합니다.
-  3. 바이너리(`openconnectsg.ps1`, `openconnectsg.cmd` 등)를 `C:\Program Files\OpenConnect\bin`으로 재배포합니다.
-  4. 비대해진 레거시 하트비트 로그가 남아있을 경우 `err.log`를 자동 정리합니다.
-  5. 활성 서비스가 실행 중이면 새 스크립트가 적용되도록 서비스를 안전하게 재시작합니다.
+  2. Git이 설치된 경우 원격 저장소(`https://github.com/sparklings/openconnectsg`)를 최신으로 클론(`git clone --depth 1`)하여 소스를 확보합니다 (`git pull`에 의존하지 않음).
+  3. Git 또는 개발 도구가 없는 일반 PC인 경우, GitHub HTTPS 아카이브(ZIP)를 자동 다운로드 및 압축 해제하여 순수 PowerShell 환경에서도 완벽히 업그레이드합니다.
+  4. 바이너리(`openconnectsg.ps1`, `openconnectsg.cmd` 등)를 `C:\Program Files\OpenConnect\bin`으로 재배포합니다.
+  5. 비대해진 레거시 하트비트 로그가 남아있을 경우 `err.log`를 자동 정리합니다.
+  6. 활성 서비스가 실행 중이면 새 스크립트가 적용되도록 서비스를 안전하게 재시작합니다.
 - **실행 예시**:
   ```powershell
   > openconnectsg upgrade
   === openconnectsg System Upgrade ===
-  Source directory: C:\Users\Goodus\OneDrive\OpenConnectSg
-  Checking for latest changes from Git repository...
-    Already up to date.
+  Cloning latest release from https://github.com/sparklings/openconnectsg.git...
+  Successfully cloned repository.
   Deploying openconnectsg 0.1.2 to C:\Program Files\OpenConnect\bin...
   Restarting active service: openconnect_203.231.7.150_10443_103995b4...
   Upgrade to openconnectsg 0.1.2 completed successfully.

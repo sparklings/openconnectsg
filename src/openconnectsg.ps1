@@ -529,85 +529,122 @@ function Do-Upgrade {
   }
 
   Write-Host "=== openconnectsg System Upgrade ==="
-  $sourceDir = $token
-  if ([string]::IsNullOrWhiteSpace($sourceDir) -and (Test-Path $installedFile)) {
-    $line = Get-Content $installedFile -ErrorAction SilentlyContinue | Where-Object { $_ -match '^source=' } | Select-Object -First 1
-    if ($line) { $sourceDir = ($line -replace '^source=', '').Trim() }
-  }
-  if ([string]::IsNullOrWhiteSpace($sourceDir) -or -not (Test-Path $sourceDir)) {
-    $candidate = Split-Path -Parent $PSScriptRoot
-    if (Test-Path (Join-Path $candidate 'src\openconnectsg.ps1')) {
-      $sourceDir = $candidate
-    } elseif (Test-Path 'C:\Program Files\OpenConnect\repo') {
-      $sourceDir = 'C:\Program Files\OpenConnect\repo'
-    }
-  }
-  if ([string]::IsNullOrWhiteSpace($sourceDir) -or -not (Test-Path $sourceDir)) {
-    throw "Source repository directory could not be determined. Please specify source path: openconnectsg upgrade <path_to_repo>"
-  }
+  $repoUrl = 'https://github.com/sparklings/openconnectsg.git'
+  $zipUrl  = 'https://github.com/sparklings/openconnectsg/archive/refs/heads/main.zip'
+  $tempWorkDir = Join-Path $env:TEMP ("openconnectsg_upgrade_" + [guid]::NewGuid().ToString('N'))
+  New-Item -ItemType Directory -Path $tempWorkDir -Force | Out-Null
+  $sourceDir = $null
 
-  Write-Host "Source directory: $sourceDir"
-
-  if (Test-Path (Join-Path $sourceDir '.git')) {
-    if (Get-Command git -ErrorAction SilentlyContinue) {
-      Write-Host "Checking for latest changes from Git repository..."
-      try {
-        $gitOut = (git -C $sourceDir pull --ff-only 2>&1 | Out-String).Trim()
-        Write-Host "  $gitOut"
-      } catch {
-        Write-Warning "Git pull skipped or encountered warning: $_"
+  try {
+    # 1. If explicit local directory path provided and valid
+    if (-not [string]::IsNullOrWhiteSpace($token) -and (Test-Path $token) -and (Test-Path (Join-Path $token 'src\openconnectsg.ps1'))) {
+      $sourceDir = (Resolve-Path $token).Path
+      Write-Host "Using specified local source directory: $sourceDir"
+    } else {
+      # 2. Try git clone first if git command exists
+      $hasGit = $null -ne (Get-Command git -ErrorAction SilentlyContinue)
+      if ($hasGit) {
+        Write-Host "Cloning latest release from $repoUrl..."
+        $cloneDir = Join-Path $tempWorkDir 'repo'
+        try {
+          $null = (git clone --depth 1 $repoUrl $cloneDir 2>&1)
+          if (Test-Path (Join-Path $cloneDir 'src\openconnectsg.ps1')) {
+            $sourceDir = $cloneDir
+            Write-Host "Successfully cloned repository."
+          }
+        } catch {
+          Write-Warning "git clone encountered an error: $_"
+        }
       }
-    }
-  }
 
-  $srcBin = Join-Path $sourceDir 'src'
-  $srcPs1 = Join-Path $srcBin 'openconnectsg.ps1'
-  $srcCmd = Join-Path $srcBin 'openconnectsg.cmd'
-  $initPs1 = Join-Path $srcBin 'init-openconnectsg.ps1'
-  $installPs1 = Join-Path $sourceDir 'install\install-openconnectsg.ps1'
+      # 3. Fallback to HTTPS archive download if git is not available or clone failed
+      if ([string]::IsNullOrWhiteSpace($sourceDir)) {
+        Write-Host "Fetching latest archive from GitHub ($zipUrl)..."
+        $zipFile = Join-Path $tempWorkDir 'openconnectsg-main.zip'
+        $extractDir = Join-Path $tempWorkDir 'extracted'
 
-  if (-not (Test-Path $srcPs1)) { throw "Required file not found: $srcPs1" }
+        [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
+        try {
+          Invoke-WebRequest -Uri $zipUrl -OutFile $zipFile -UseBasicParsing -TimeoutSec 30
+        } catch {
+          $wc = New-Object System.Net.WebClient
+          $wc.DownloadFile($zipUrl, $zipFile)
+        }
 
-  $newVer = $script:Version
-  $vLine = Get-Content $srcPs1 -ErrorAction SilentlyContinue | Where-Object { $_ -match '^\$script:Version\s*=\s*[''"]([^''"]+)[''"]' } | Select-Object -First 1
-  if ($vLine -and $vLine -match '^\$script:Version\s*=\s*[''"]([^''"]+)[''"]') {
-    $newVer = $matches[1]
-  }
+        if (-not (Test-Path $zipFile)) {
+          throw "Failed to download update archive from GitHub."
+        }
 
-  Write-Host "Deploying openconnectsg $newVer to $binDir..."
-  Copy-Item $srcPs1 $binDir -Force
-  if (Test-Path $srcCmd)     { Copy-Item $srcCmd $binDir -Force }
-  if (Test-Path $initPs1)    { Copy-Item $initPs1 $binDir -Force }
-  if (Test-Path $installPs1) { Copy-Item $installPs1 $binDir -Force }
+        Expand-Archive -Path $zipFile -DestinationPath $extractDir -Force
+        $candidateDir = Join-Path $extractDir 'openconnectsg-main'
+        if (-not (Test-Path (Join-Path $candidateDir 'src\openconnectsg.ps1'))) {
+          $sub = Get-ChildItem -Path $extractDir -Directory | Select-Object -First 1
+          if ($sub) { $candidateDir = $sub.FullName }
+        }
 
-  $dateStr = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
-  $marker = "version=$newVer`r`nsource=$sourceDir`r`ninstalled=$dateStr`r`n"
-  [System.IO.File]::WriteAllText($installedFile, $marker, (New-Object System.Text.UTF8Encoding($false)))
-
-  $profDir = Join-Path $ocRoot 'profiles'
-  if (Test-Path $profDir) {
-    Get-ChildItem -Path $profDir -Directory -ErrorAction SilentlyContinue | ForEach-Object {
-      $errPath = Join-Path $_.FullName 'logs\err.log'
-      if (Test-Path $errPath) {
-        $sample = Get-Content $errPath -Tail 10 -ErrorAction SilentlyContinue
-        if ($sample -match 'Unexpected pre-PPP packet header|GFtype\.heartbeat') {
-          Write-Host "  Clearing legacy heartbeat logs from $($_.Name)..."
-          Set-Content -Path $errPath -Value $null -Force
+        if (Test-Path (Join-Path $candidateDir 'src\openconnectsg.ps1')) {
+          $sourceDir = $candidateDir
+          Write-Host "Successfully downloaded and extracted repository archive."
+        } else {
+          throw "Failed to locate source files in extracted archive."
         }
       }
     }
-  }
 
-  $activeServices = @(Get-Service -Name openconnect* -ErrorAction SilentlyContinue | Where-Object { $_.Status -eq 'Running' })
-  if ($activeServices.Count -gt 0) {
-    foreach ($svc in $activeServices) {
-      Write-Host "Restarting active service: $($svc.Name)..."
-      Restart-Service -Name $svc.Name -Force
+    $srcBin = Join-Path $sourceDir 'src'
+    $srcPs1 = Join-Path $srcBin 'openconnectsg.ps1'
+    $srcCmd = Join-Path $srcBin 'openconnectsg.cmd'
+    $initPs1 = Join-Path $srcBin 'init-openconnectsg.ps1'
+    $installPs1 = Join-Path $sourceDir 'install\install-openconnectsg.ps1'
+
+    if (-not (Test-Path $srcPs1)) { throw "Required file not found in source: $srcPs1" }
+
+    # Detect new version string
+    $newVer = $script:Version
+    $vLine = Get-Content $srcPs1 -ErrorAction SilentlyContinue | Where-Object { $_ -match '^\$script:Version\s*=\s*[''"]([^''"]+)[''"]' } | Select-Object -First 1
+    if ($vLine -and $vLine -match '^\$script:Version\s*=\s*[''"]([^''"]+)[''"]') {
+      $newVer = $matches[1]
+    }
+
+    Write-Host "Deploying openconnectsg $newVer to $binDir..."
+    Copy-Item $srcPs1 $binDir -Force
+    if (Test-Path $srcCmd)     { Copy-Item $srcCmd $binDir -Force }
+    if (Test-Path $initPs1)    { Copy-Item $initPs1 $binDir -Force }
+    if (Test-Path $installPs1) { Copy-Item $installPs1 $binDir -Force }
+
+    $dateStr = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
+    $marker = "version=$newVer`r`nsource=https://github.com/sparklings/openconnectsg`r`ninstalled=$dateStr`r`n"
+    [System.IO.File]::WriteAllText($installedFile, $marker, (New-Object System.Text.UTF8Encoding($false)))
+
+    $profDir = Join-Path $ocRoot 'profiles'
+    if (Test-Path $profDir) {
+      Get-ChildItem -Path $profDir -Directory -ErrorAction SilentlyContinue | ForEach-Object {
+        $errPath = Join-Path $_.FullName 'logs\err.log'
+        if (Test-Path $errPath) {
+          $sample = Get-Content $errPath -Tail 10 -ErrorAction SilentlyContinue
+          if ($sample -match 'Unexpected pre-PPP packet header|GFtype\.heartbeat') {
+            Write-Host "  Clearing legacy heartbeat logs from $($_.Name)..."
+            Set-Content -Path $errPath -Value $null -Force
+          }
+        }
+      }
+    }
+
+    $activeServices = @(Get-Service -Name openconnect* -ErrorAction SilentlyContinue | Where-Object { $_.Status -eq 'Running' })
+    if ($activeServices.Count -gt 0) {
+      foreach ($svc in $activeServices) {
+        Write-Host "Restarting active service: $($svc.Name)..."
+        Restart-Service -Name $svc.Name -Force
+      }
+    }
+
+    Write-Host "Upgrade to openconnectsg $newVer completed successfully."
+    return 0
+  } finally {
+    if (Test-Path $tempWorkDir) {
+      Remove-Item -Path $tempWorkDir -Recurse -Force -ErrorAction SilentlyContinue
     }
   }
-
-  Write-Host "Upgrade to openconnectsg $newVer completed successfully."
-  return 0
 }
 
 # --- Service Daemon Runner (Internal entry point invoked by NSSM) ---

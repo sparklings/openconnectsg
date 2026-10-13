@@ -66,16 +66,34 @@ if ($SkipClone) {
   }
   if ([string]::IsNullOrWhiteSpace($RepoUrl)) { throw 'Repository URL is required.' }
   if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
-    throw 'git command not found. Please install Git or run installer with -SkipClone from a downloaded directory.'
-  }
-  if (Test-Path $Dest) {
-    Write-Host "Target repository directory exists. Pulling latest: $Dest"
-    git -C $Dest pull --ff-only
+    Write-Host "git command not found. Downloading repository archive via HTTPS..."
+    $zipUrl = 'https://github.com/sparklings/openconnectsg/archive/refs/heads/main.zip'
+    $zipFile = Join-Path $env:TEMP ('openconnectsg_install_' + [guid]::NewGuid().ToString('N') + '.zip')
+    [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
+    try {
+      Invoke-WebRequest -Uri $zipUrl -OutFile $zipFile -UseBasicParsing -TimeoutSec 30
+    } catch {
+      $wc = New-Object System.Net.WebClient
+      $wc.DownloadFile($zipUrl, $zipFile)
+    }
+    if (-not (Test-Path $zipFile)) { throw 'Failed to download installer archive from GitHub.' }
+    New-Item -ItemType Directory -Path $Dest -Force | Out-Null
+    Expand-Archive -Path $zipFile -DestinationPath $Dest -Force
+    Remove-Item $zipFile -Force -ErrorAction SilentlyContinue
+    $candidate = Join-Path $Dest 'openconnectsg-main'
+    if (Test-Path (Join-Path $candidate 'src\openconnectsg.ps1')) {
+      $SourceDir = $candidate
+    } else {
+      $SourceDir = $Dest
+    }
   } else {
+    if (Test-Path $Dest) {
+      Remove-Item $Dest -Recurse -Force -ErrorAction SilentlyContinue
+    }
     New-Item -ItemType Directory -Path (Split-Path $Dest) -Force | Out-Null
     git clone $RepoUrl $Dest
+    $SourceDir = $Dest
   }
-  $SourceDir = $Dest
 }
 
 # Verify and deploy
