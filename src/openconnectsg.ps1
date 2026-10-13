@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 <#
 .SYNOPSIS
   openconnectsg - Unified CLI tool for OpenConnect VPN profile management and service orchestration.
