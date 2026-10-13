@@ -1,4 +1,4 @@
-﻿# openconnectsg 서브커맨드 메뉴얼 (Subcommand Manual)
+# openconnectsg 서브커맨드 메뉴얼 (Subcommand Manual)
 
 `openconnectsg` CLI 도구에서 지원하는 모든 서브커맨드의 구문, 파라미터, 동작 정책 및 실행 예시를 정리한 사용자 메뉴얼입니다.
 
@@ -284,7 +284,38 @@ openconnectsg <서브커맨드> [인자1] [인자2] ...
 
 ---
 
-### 3.10. `version` (버전 확인)
+### 3.10. `upgrade` / `update` (시스템 업그레이드)
+
+설치된 `openconnectsg` 바이너리를 최신 버전으로 갱신하고, 실행 중인 터널 서비스를 자동으로 재시작합니다.
+
+- **문법**:
+  ```powershell
+  openconnectsg upgrade [<source_path>]
+  openconnectsg update [<source_path>]      # upgrade의 단축 별칭
+  ```
+- **인자**:
+  - `<source_path>` *(선택)*: 업데이트할 Git 저장소 또는 소스 디렉터리 경로. 생략 시 기존 설치 시 기록된 소스 위치를 자동으로 참조합니다.
+- **주요 동작**:
+  1. 관리자 권한을 확인하고, 일반 터미널인 경우 UAC 승격 팝업을 호출하여 안전하게 수행합니다.
+  2. Git 소스인 경우 `git pull --ff-only`로 최신 변경사항을 반영합니다.
+  3. 바이너리(`openconnectsg.ps1`, `openconnectsg.cmd` 등)를 `C:\Program Files\OpenConnect\bin`으로 재배포합니다.
+  4. 비대해진 레거시 하트비트 로그가 남아있을 경우 `err.log`를 자동 정리합니다.
+  5. 활성 서비스가 실행 중이면 새 스크립트가 적용되도록 서비스를 안전하게 재시작합니다.
+- **실행 예시**:
+  ```powershell
+  > openconnectsg upgrade
+  === openconnectsg System Upgrade ===
+  Source directory: C:\Users\Goodus\OneDrive\OpenConnectSg
+  Checking for latest changes from Git repository...
+    Already up to date.
+  Deploying openconnectsg 0.1.2 to C:\Program Files\OpenConnect\bin...
+  Restarting active service: openconnect_203.231.7.150_10443_103995b4...
+  Upgrade to openconnectsg 0.1.2 completed successfully.
+  ```
+
+---
+
+### 3.11. `version` (버전 확인)
 
 현재 설치된 `openconnectsg`의 버전을 확인합니다.
 
@@ -296,12 +327,12 @@ openconnectsg <서브커맨드> [인자1] [인자2] ...
   ```
 - **실행 결과**:
   ```powershell
-  openconnectsg 0.1.1b
+  openconnectsg 0.1.2
   ```
 
 ---
 
-### 3.11. `help` (도움말 표시)
+### 3.12. `help` (도움말 표시)
 
 전체 서브커맨드 요약 안내문을 출력합니다.
 

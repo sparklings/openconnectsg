@@ -494,6 +494,114 @@ function Do-Uninstall {
   return 0
 }
 
+function Do-Upgrade {
+  param($token)
+  $binDir = 'C:\Program Files\OpenConnect\bin'
+  $installedFile = Join-Path $binDir '.installed'
+
+  $isAdmin = [Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent().IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+  if (-not $isAdmin) {
+    Write-Host "Administrative privileges are required to upgrade openconnectsg."
+    Write-Host "Requesting elevation via User Account Control (UAC)..."
+    $selfPath = $MyInvocation.MyCommand.Definition
+    if ([string]::IsNullOrWhiteSpace($selfPath) -or -not (Test-Path $selfPath)) {
+      $selfPath = Join-Path $binDir 'openconnectsg.ps1'
+    }
+    $argStr = "-NoProfile -ExecutionPolicy Bypass -Command `"& '$selfPath' upgrade"
+    if (-not [string]::IsNullOrWhiteSpace($token)) { $argStr += " '$token'" }
+    $argStr += "; Write-Host ''; Read-Host 'Press Enter to close this window...'`""
+
+    try {
+      $p = Start-Process powershell.exe -Verb RunAs -ArgumentList $argStr -PassThru
+      Write-Host "Elevation requested (Process ID: $($p.Id)). Please approve the UAC prompt."
+      return 0
+    } catch {
+      throw "Failed to elevate process. Please run 'openconnectsg upgrade' from an elevated administrator console."
+    }
+  }
+
+  Write-Host "=== openconnectsg System Upgrade ==="
+  $sourceDir = $token
+  if ([string]::IsNullOrWhiteSpace($sourceDir) -and (Test-Path $installedFile)) {
+    $line = Get-Content $installedFile -ErrorAction SilentlyContinue | Where-Object { $_ -match '^source=' } | Select-Object -First 1
+    if ($line) { $sourceDir = ($line -replace '^source=', '').Trim() }
+  }
+  if ([string]::IsNullOrWhiteSpace($sourceDir) -or -not (Test-Path $sourceDir)) {
+    $candidate = Split-Path -Parent $PSScriptRoot
+    if (Test-Path (Join-Path $candidate 'src\openconnectsg.ps1')) {
+      $sourceDir = $candidate
+    } elseif (Test-Path 'C:\Program Files\OpenConnect\repo') {
+      $sourceDir = 'C:\Program Files\OpenConnect\repo'
+    }
+  }
+  if ([string]::IsNullOrWhiteSpace($sourceDir) -or -not (Test-Path $sourceDir)) {
+    throw "Source repository directory could not be determined. Please specify source path: openconnectsg upgrade <path_to_repo>"
+  }
+
+  Write-Host "Source directory: $sourceDir"
+
+  if (Test-Path (Join-Path $sourceDir '.git')) {
+    if (Get-Command git -ErrorAction SilentlyContinue) {
+      Write-Host "Checking for latest changes from Git repository..."
+      try {
+        $gitOut = (git -C $sourceDir pull --ff-only 2>&1 | Out-String).Trim()
+        Write-Host "  $gitOut"
+      } catch {
+        Write-Warning "Git pull skipped or encountered warning: $_"
+      }
+    }
+  }
+
+  $srcBin = Join-Path $sourceDir 'src'
+  $srcPs1 = Join-Path $srcBin 'openconnectsg.ps1'
+  $srcCmd = Join-Path $srcBin 'openconnectsg.cmd'
+  $initPs1 = Join-Path $srcBin 'init-openconnectsg.ps1'
+  $installPs1 = Join-Path $sourceDir 'install\install-openconnectsg.ps1'
+
+  if (-not (Test-Path $srcPs1)) { throw "Required file not found: $srcPs1" }
+
+  $newVer = $script:Version
+  $vLine = Get-Content $srcPs1 -ErrorAction SilentlyContinue | Where-Object { $_ -match '^\$script:Version\s*=\s*[''"]([^''"]+)[''"]' } | Select-Object -First 1
+  if ($vLine -and $vLine -match '^\$script:Version\s*=\s*[''"]([^''"]+)[''"]') {
+    $newVer = $matches[1]
+  }
+
+  Write-Host "Deploying openconnectsg $newVer to $binDir..."
+  Copy-Item $srcPs1 $binDir -Force
+  if (Test-Path $srcCmd)     { Copy-Item $srcCmd $binDir -Force }
+  if (Test-Path $initPs1)    { Copy-Item $initPs1 $binDir -Force }
+  if (Test-Path $installPs1) { Copy-Item $installPs1 $binDir -Force }
+
+  $dateStr = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
+  $marker = "version=$newVer`r`nsource=$sourceDir`r`ninstalled=$dateStr`r`n"
+  [System.IO.File]::WriteAllText($installedFile, $marker, (New-Object System.Text.UTF8Encoding($false)))
+
+  $profDir = Join-Path $ocRoot 'profiles'
+  if (Test-Path $profDir) {
+    Get-ChildItem -Path $profDir -Directory -ErrorAction SilentlyContinue | ForEach-Object {
+      $errPath = Join-Path $_.FullName 'logs\err.log'
+      if (Test-Path $errPath) {
+        $sample = Get-Content $errPath -Tail 10 -ErrorAction SilentlyContinue
+        if ($sample -match 'Unexpected pre-PPP packet header|GFtype\.heartbeat') {
+          Write-Host "  Clearing legacy heartbeat logs from $($_.Name)..."
+          Set-Content -Path $errPath -Value $null -Force
+        }
+      }
+    }
+  }
+
+  $activeServices = @(Get-Service -Name openconnect* -ErrorAction SilentlyContinue | Where-Object { $_.Status -eq 'Running' })
+  if ($activeServices.Count -gt 0) {
+    foreach ($svc in $activeServices) {
+      Write-Host "Restarting active service: $($svc.Name)..."
+      Restart-Service -Name $svc.Name -Force
+    }
+  }
+
+  Write-Host "Upgrade to openconnectsg $newVer completed successfully."
+  return 0
+}
+
 # --- Service Daemon Runner (Internal entry point invoked by NSSM) ---
 function Do-ServiceRun {
   param([string]$ServiceName)
@@ -635,12 +743,13 @@ Usage:
   openconnectsg alias <profile> <alias>   Assign friendly alias to profile
   openconnectsg default <profile>         Set default profile
   openconnectsg remove <profile>          Remove profile and unregister Windows service
+  openconnectsg upgrade [<source>]        Upgrade openconnectsg system binaries to latest version
   openconnectsg uninstall [<scope>]       Uninstall openconnectsg (scope: app or full)
   openconnectsg version                   Display tool version
   openconnectsg help                      Display this help screen
 
 Aliases:
-  ls -> list, up/start -> connect, down/stop -> disconnect, add -> setup, rm -> remove, un/purge -> uninstall
+  ls -> list, up/start -> connect, down/stop -> disconnect, add -> setup, rm -> remove, un/purge -> uninstall, update -> upgrade
 
 Identifier:
   <profile> = Index (#) | Alias | Account name | Service name substring
@@ -675,6 +784,8 @@ try {
     'remove'       { $exitCode = Do-Remove     (Get-Profiles) $a1 }
     'rm'           { $exitCode = Do-Remove     (Get-Profiles) $a1 }
     'delete'       { $exitCode = Do-Remove     (Get-Profiles) $a1 }
+    'upgrade'      { $exitCode = Do-Upgrade    $a1 }
+    'update'       { $exitCode = Do-Upgrade    $a1 }
     'uninstall'    { $exitCode = Do-Uninstall  $a1 }
     'un'           { $exitCode = Do-Uninstall  $a1 }
     'purge'        { $exitCode = Do-Uninstall  $a1 }

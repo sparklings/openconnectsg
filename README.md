@@ -101,6 +101,7 @@ openconnectsg disconnect all       # 모든 활성 VPN 연결 해제
 | `openconnectsg alias <p> <별칭>` | `label` | 프로필에 호출용 별칭 부여 |
 | `openconnectsg default <p>` | - | 기본 접속 대상 프로필 포인터 지정 |
 | `openconnectsg remove <p>` | `rm`, `delete` | 프로필 구성 삭제 및 Windows 서비스 영구 등록 해제 |
+| `openconnectsg upgrade [<p>]` | `update` | 최신 소스로 바이너리 업그레이드 및 서비스 재시작 |
 | `openconnectsg uninstall [<s\>]` | `un`, `purge` | 도구 제거 (범위: `app` 앱 전용 삭제, `full` 전체 완전 삭제) |
 | `openconnectsg version` | `-v` | 현재 버전 출력 (`0.1.2`) |
 | `openconnectsg help` | `-h` | CLI 도움말 화면 출력 |

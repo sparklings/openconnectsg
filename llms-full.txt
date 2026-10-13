@@ -85,6 +85,7 @@ C:\Program Files\nssm\
 | `alias` | `label` | `<profile> <name>` | Writes friendly alias to `profiles\<name>\label.txt`. |
 | `default` | None | `<profile>` | Sets active default profile pointer in `profiles\default.txt`. |
 | `remove` | `rm`, `delete` | `<profile>` | Prompts confirmation (`yes`), stops service, deletes NSSM service, purges profile directory. |
+| `upgrade` | `update` | `[<source>]` | Deploys latest binaries to installation directory, updates marker, restarts active services. |
 | `uninstall` | `un`, `purge` | `[<scope>]` | Uninstalls openconnectsg (`app`: script/service/profiles only, `full`: complete purge including NSSM and OpenConnect CLI). |
 | `service-run`| None | `<service_name>`| **Internal daemon runner**: Mutex guard -> DPAPI Unprotect -> launch `openconnect.exe` -> pipe password via stdin. |
 | `version` | `-v`, `--version`| None | Outputs current tool version (`openconnectsg 0.1.2`). |
