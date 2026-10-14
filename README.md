@@ -103,8 +103,9 @@ openconnectsg disconnect all       # 모든 활성 VPN 연결 해제
 | `openconnectsg remove <p>` | `rm`, `delete` | 프로필 구성 삭제 및 Windows 서비스 영구 등록 해제 |
 | `openconnectsg upgrade [<p>]` | `update` | 최신 소스로 바이너리 업그레이드 및 서비스 재시작 |
 | `openconnectsg uninstall [<s\>]` | `un`, `purge` | 도구 제거 (범위: `app` 앱 전용 삭제, `full` 전체 완전 삭제) |
-| `openconnectsg version` | `-v` | 현재 버전 출력 (`0.1.2b`) |
-| `openconnectsg help` | `-h` | CLI 도움말 화면 출력 |
+| `openconnectsg version` | `-v` | 현재 버전 및 시스템 정보 출력 (`0.1.2b`) |
+| `openconnectsg banner` | - | 웰컴 Slant ASCII Figlet 배너 출력 |
+| `openconnectsg help` | `-h` | CLI 도움말 및 배너 출력 |
 
 자세한 사용법은 [서브커맨드 메뉴얼](docs/subcommand-manual.md)을 참조하십시오.
 

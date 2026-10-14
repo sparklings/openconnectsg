@@ -134,6 +134,13 @@ openconnectsg setup
 
 ## 5. 업데이트 및 재설치 (Update)
 
+### 방법 A. CLI 자동 업그레이드 (권장)
+어느 터미널에서나 아래 명령을 실행하면 최신 릴리스 패키지를 자동 다운로드하여 배포 및 서비스를 갱신합니다 (UAC 자동 승격):
+```powershell
+openconnectsg upgrade
+```
+
+### 방법 B. 저장소 직접 업데이트
 ```powershell
 cd "C:\Program Files\OpenConnect\repo"
 git pull --ff-only

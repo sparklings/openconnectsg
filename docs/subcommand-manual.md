@@ -305,36 +305,89 @@ openconnectsg <서브커맨드> [인자1] [인자2] ...
 - **실행 예시**:
   ```powershell
   > openconnectsg upgrade
-  === openconnectsg System Upgrade ===
-  Cloning latest release from https://github.com/sparklings/openconnectsg.git...
-  Successfully cloned repository.
-  Deploying openconnectsg 0.1.2b to C:\Program Files\OpenConnect\bin...
-  Restarting active service: openconnect_203.231.7.150_10443_103995b4...
-  Upgrade to openconnectsg 0.1.2b completed successfully.
+
+     ____                   ______                            __   _____       
+    / __ \____  ___  ____  / ____/___  ____  ____  ___  _____/ /_ / ___/____ _ 
+   / / / / __ \/ _ \/ __ \/ /   / __ \/ __ \/ __ \/ _ \/ ___/ __/ \__ \/ __ `/ 
+  / /_/ / /_/ /  __/ / / / /___/ /_/ / / / / / / /  __/ /__/ /_   ___/ / /_/ /  
+  \____/ .___/\___/_/ /_/\____/\____/_/ /_/_/ /_/\___/\___/\__/  /____/\__, /   
+      /_/                                                             /____/    
+   ==============================================================================
+    OpenConnectSg :: System Upgrade & Maintenance (v0.1.2b)
+   ==============================================================================
+
+   [Step 1/3] Fetching latest release package...
+
+     Source Type       : Remote Git Repository
+     Repository URL    : https://github.com/sparklings/openconnectsg.git
+     Cloning repository (depth 1)...
+     Status            : Repository cloned successfully.
+
+   [Step 2/3] Deploying updated binaries...
+
+     Target Directory  : C:\Program Files\OpenConnect\bin
+     Target Version    : openconnectsg 0.1.2b (Current: 0.1.2b)
+     Deploying scripts...
+     Core scripts updated successfully.
+     Status            : Binaries deployed and profile configurations sanitized.
+
+   [Step 3/3] Synchronizing background services...
+
+     Restarting active service : openconnect_203.231.7.150_10443_103995b4...
+     Service state             : Running (active)
+
+   ==============================================================================
+    Upgrade completed successfully! (openconnectsg 0.1.2b)
+   ==============================================================================
   ```
 
 ---
 
-### 3.11. `version` (버전 확인)
+### 3.11. `version` (버전 및 시스템 정보 확인)
 
-현재 설치된 `openconnectsg`의 버전을 확인합니다.
+현재 설치된 `openconnectsg`의 버전 및 저장소, 설치 경로 정보를 확인합니다.
 
 - **문법**:
   ```powershell
-  openconnectsg version
-  openconnectsg -v
+  openconnectsg version      # 배너 및 상세 시스템 정보 표시
+  openconnectsg -v           # 단일 라인 버전 문자열 출력 (스크립트 파싱용)
   openconnectsg --version
   ```
-- **실행 결과**:
+- **실행 결과 (`openconnectsg version`)**:
   ```powershell
-  openconnectsg 0.1.2b
+     ____                   ______                            __   _____       
+    / __ \____  ___  ____  / ____/___  ____  ____  ___  _____/ /_ / ___/____ _ 
+   / / / / __ \/ _ \/ __ \/ /   / __ \/ __ \/ __ \/ _ \/ ___/ __/ \__ \/ __ `/ 
+  / /_/ / /_/ /  __/ / / / /___/ /_/ / / / / / / /  __/ /__/ /_   ___/ / /_/ /  
+  \____/ .___/\___/_/ /_/\____/\____/_/ /_/_/ /_/\___/\___/\__/  /____/\__, /   
+      /_/                                                             /____/    
+   ==============================================================================
+    OpenConnectSg :: System & Version Information (v0.1.2b)
+   ==============================================================================
+
+    Version       : openconnectsg 0.1.2b
+    Binary Path   : C:\Program Files\OpenConnect\bin
+    Profiles Path : C:\Program Files\OpenConnect\profiles
+    Repository    : https://github.com/sparklings/openconnectsg
+    Documentation : https://github.com/sparklings/openconnectsg#readme
   ```
 
 ---
 
-### 3.12. `help` (도움말 표시)
+### 3.12. `banner` (웰컴 아스키 배너 표시)
 
-전체 서브커맨드 요약 안내문을 출력합니다.
+`openconnectsg` 공식 Slant ASCII Figlet 웰컴 배너를 출력합니다.
+
+- **문법**:
+  ```powershell
+  openconnectsg banner
+  ```
+
+---
+
+### 3.13. `help` (도움말 표시)
+
+전체 서브커맨드 요약 안내문과 아스키 배너를 출력합니다.
 
 - **문법**:
   ```powershell

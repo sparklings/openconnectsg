@@ -20,6 +20,31 @@ $root        = Join-Path $ocRoot 'profiles'
 $nssm        = 'C:\Program Files\nssm\nssm.exe'
 $defaultFile = Join-Path $root 'default.txt'
 
+function Show-Banner {
+  param([string]$SubTitle = "Windows Background Daemon & DPAPI Automation Wrapper")
+  Write-Host ""
+  Write-Host "   ____                   ______                            __   _____       " -ForegroundColor Cyan
+  Write-Host "  / __ \____  ___  ____  / ____/___  ____  ____  ___  _____/ /_ / ___/____ _ " -ForegroundColor Cyan
+  Write-Host " / / / / __ \/ _ \/ __ \/ /   / __ \/ __ \/ __ \/ _ \/ ___/ __/ \__ \/ __ `/ " -ForegroundColor Cyan
+  Write-Host "/ /_/ / /_/ /  __/ / / / /___/ /_/ / / / / / / /  __/ /__/ /_   ___/ / /_/ /  " -ForegroundColor Cyan
+  Write-Host "\____/ .___/\___/_/ /_/\____/\____/_/ /_/_/ /_/\___/\___/\__/  /____/\__, /   " -ForegroundColor Cyan
+  Write-Host "    /_/                                                             /____/    " -ForegroundColor Cyan
+  Write-Host " ==============================================================================" -ForegroundColor DarkGray
+  Write-Host "  OpenConnectSg :: $SubTitle (v$script:Version)" -ForegroundColor White
+  Write-Host " ==============================================================================" -ForegroundColor DarkGray
+  Write-Host ""
+}
+
+function Show-Version {
+  Show-Banner "System & Version Information"
+  Write-Host "  Version       : openconnectsg $script:Version" -ForegroundColor Green
+  Write-Host "  Binary Path   : $(Join-Path $ocRoot 'bin')" -ForegroundColor DarkCyan
+  Write-Host "  Profiles Path : $root" -ForegroundColor DarkCyan
+  Write-Host "  Repository    : https://github.com/sparklings/openconnectsg" -ForegroundColor DarkCyan
+  Write-Host "  Documentation : https://github.com/sparklings/openconnectsg#readme" -ForegroundColor DarkCyan
+  Write-Host ""
+}
+
 function Get-Profiles {
   $list = @()
   if (-not (Test-Path $root)) { return $list }
@@ -512,8 +537,10 @@ function Do-Upgrade {
   $wp = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
   $isAdmin = $wp.IsInRole([System.Security.Principal.WindowsBuiltInRole]::Administrator)
   if (-not $isAdmin) {
-    Write-Host "Administrative privileges are required to upgrade openconnectsg."
-    Write-Host "Requesting elevation via User Account Control (UAC)..."
+    Write-Host ""
+    Write-Host " [Elevation Required]" -ForegroundColor Yellow
+    Write-Host "   Administrative privileges are required to upgrade openconnectsg." -ForegroundColor White
+    Write-Host "   Requesting elevation via User Account Control (UAC)..." -ForegroundColor DarkCyan
     $selfPath = $MyInvocation.MyCommand.Definition
     if ([string]::IsNullOrWhiteSpace($selfPath) -or -not (Test-Path $selfPath)) {
       $selfPath = Join-Path $binDir 'openconnectsg.ps1'
@@ -524,21 +551,24 @@ function Do-Upgrade {
 
     try {
       $p = Start-Process powershell.exe -Verb RunAs -ArgumentList $argStr -PassThru
-      Write-Host "Elevation requested (Process ID: $($p.Id)). Please approve the UAC prompt."
+      Write-Host "   UAC prompt initiated (Process ID: $($p.Id)). Please approve to continue." -ForegroundColor DarkCyan
+      Write-Host ""
       return 0
     } catch {
       try {
         $sh = New-Object -ComObject Shell.Application
         $sh.ShellExecute("powershell.exe", $argStr, "", "runas", 1)
-        Write-Host "Elevation requested via ShellExecute. Please approve the UAC prompt."
+        Write-Host "   UAC prompt initiated via ShellExecute. Please approve to continue." -ForegroundColor DarkCyan
+        Write-Host ""
         return 0
       } catch {
-        throw "Failed to elevate process. Please run 'openconnectsg upgrade' from an elevated administrator console."
+        throw "Failed to elevate process. Please run 'openconnectsg upgrade' from an administrator PowerShell console."
       }
     }
   }
 
-  Write-Host "=== openconnectsg System Upgrade ==="
+  Show-Banner "System Upgrade & Maintenance"
+
   $repoUrl = 'https://github.com/sparklings/openconnectsg.git'
   $zipUrl  = 'https://github.com/sparklings/openconnectsg/archive/refs/heads/main.zip'
   $tempWorkDir = Join-Path $env:TEMP ("openconnectsg_upgrade_" + [guid]::NewGuid().ToString('N'))
@@ -546,30 +576,43 @@ function Do-Upgrade {
   $sourceDir = $null
 
   try {
+    Write-Host " [Step 1/3] Fetching latest release package..." -ForegroundColor Cyan
+    Write-Host ""
+
     # 1. If explicit local directory path provided and valid
     if (-not [string]::IsNullOrWhiteSpace($token) -and (Test-Path $token) -and (Test-Path (Join-Path $token 'src\openconnectsg.ps1'))) {
       $sourceDir = (Resolve-Path $token).Path
-      Write-Host "Using specified local source directory: $sourceDir"
+      Write-Host "   Source Type       : Local Directory" -ForegroundColor White
+      Write-Host "   Source Path       : $sourceDir" -ForegroundColor DarkCyan
+      Write-Host "   Status            : Local source directory verified." -ForegroundColor Green
     } else {
       # 2. Try git clone first if git command exists
       $hasGit = $null -ne (Get-Command git -ErrorAction SilentlyContinue)
       if ($hasGit) {
-        Write-Host "Cloning latest release from $repoUrl..."
+        Write-Host "   Source Type       : Remote Git Repository" -ForegroundColor White
+        Write-Host "   Repository URL    : $repoUrl" -ForegroundColor DarkCyan
+        Write-Host "   Cloning repository (depth 1)..." -ForegroundColor Gray
         $cloneDir = Join-Path $tempWorkDir 'repo'
         try {
-          $null = (git clone --depth 1 $repoUrl $cloneDir 2>&1)
-          if (Test-Path (Join-Path $cloneDir 'src\openconnectsg.ps1')) {
+          $gitProc = Start-Process -FilePath "git" -ArgumentList "clone", "--depth", "1", "--quiet", $repoUrl, "`"$cloneDir`"" -NoNewWindow -Wait -PassThru -ErrorAction SilentlyContinue
+          if ($gitProc -and $gitProc.ExitCode -eq 0 -and (Test-Path (Join-Path $cloneDir 'src\openconnectsg.ps1'))) {
             $sourceDir = $cloneDir
-            Write-Host "Successfully cloned repository."
+            Write-Host "   Status            : Repository cloned successfully." -ForegroundColor Green
+          } else {
+            Write-Host "   Notice            : Git clone unavailable or failed. Switching to direct HTTPS archive." -ForegroundColor Yellow
           }
         } catch {
-          Write-Warning "git clone encountered an error: $_"
+          Write-Host "   Notice            : Git clone error. Switching to direct HTTPS archive." -ForegroundColor Yellow
         }
       }
 
       # 3. Fallback to HTTPS archive download if git is not available or clone failed
       if ([string]::IsNullOrWhiteSpace($sourceDir)) {
-        Write-Host "Fetching latest archive from GitHub ($zipUrl)..."
+        if (-not $hasGit) {
+          Write-Host "   Source Type       : Direct HTTPS Archive (Git not detected)" -ForegroundColor White
+        }
+        Write-Host "   Download URL      : $zipUrl" -ForegroundColor DarkCyan
+        Write-Host "   Downloading package archive..." -ForegroundColor Gray
         $zipFile = Join-Path $tempWorkDir 'openconnectsg-main.zip'
         $extractDir = Join-Path $tempWorkDir 'extracted'
 
@@ -585,6 +628,7 @@ function Do-Upgrade {
           throw "Failed to download update archive from GitHub."
         }
 
+        Write-Host "   Extracting package files..." -ForegroundColor Gray
         Expand-Archive -Path $zipFile -DestinationPath $extractDir -Force
         $candidateDir = Join-Path $extractDir 'openconnectsg-main'
         if (-not (Test-Path (Join-Path $candidateDir 'src\openconnectsg.ps1'))) {
@@ -594,7 +638,7 @@ function Do-Upgrade {
 
         if (Test-Path (Join-Path $candidateDir 'src\openconnectsg.ps1')) {
           $sourceDir = $candidateDir
-          Write-Host "Successfully downloaded and extracted repository archive."
+          Write-Host "   Status            : Package archive downloaded and extracted successfully." -ForegroundColor Green
         } else {
           throw "Failed to locate source files in extracted archive."
         }
@@ -616,7 +660,13 @@ function Do-Upgrade {
       $newVer = $matches[1]
     }
 
-    Write-Host "Deploying openconnectsg $newVer to $binDir..."
+    Write-Host ""
+    Write-Host " [Step 2/3] Deploying updated binaries..." -ForegroundColor Cyan
+    Write-Host ""
+    Write-Host "   Target Directory  : $binDir" -ForegroundColor White
+    Write-Host "   Target Version    : openconnectsg $newVer (Current: $script:Version)" -ForegroundColor White
+    Write-Host "   Deploying scripts..." -ForegroundColor Gray
+
     Copy-Item $srcPs1 $binDir -Force
     if (Test-Path $srcCmd)     { Copy-Item $srcCmd $binDir -Force }
     if (Test-Path $initPs1)    { Copy-Item $initPs1 $binDir -Force }
@@ -625,6 +675,7 @@ function Do-Upgrade {
     $dateStr = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
     $marker = "version=$newVer`r`nsource=https://github.com/sparklings/openconnectsg`r`ninstalled=$dateStr`r`n"
     [System.IO.File]::WriteAllText($installedFile, $marker, (New-Object System.Text.UTF8Encoding($false)))
+    Write-Host "   Core scripts updated successfully." -ForegroundColor Green
 
     $profDir = Join-Path $ocRoot 'profiles'
     if (Test-Path $profDir) {
@@ -633,7 +684,7 @@ function Do-Upgrade {
         if (Test-Path $errPath) {
           $sample = Get-Content $errPath -Tail 10 -ErrorAction SilentlyContinue
           if ($sample -match 'Unexpected pre-PPP packet header|GFtype\.heartbeat') {
-            Write-Host "  Clearing legacy heartbeat logs from $($_.Name)..."
+            Write-Host "   Purging legacy heartbeat log from $($_.Name)..." -ForegroundColor Gray
             Set-Content -Path $errPath -Value $null -Force
           }
         }
@@ -644,16 +695,27 @@ function Do-Upgrade {
         }
       }
     }
+    Write-Host "   Status            : Binaries deployed and profile configurations sanitized." -ForegroundColor Green
 
+    Write-Host ""
+    Write-Host " [Step 3/3] Synchronizing background services..." -ForegroundColor Cyan
+    Write-Host ""
     $activeServices = @(Get-Service -Name openconnect* -ErrorAction SilentlyContinue | Where-Object { $_.Status -eq 'Running' })
     if ($activeServices.Count -gt 0) {
       foreach ($svc in $activeServices) {
-        Write-Host "Restarting active service: $($svc.Name)..."
-        Restart-Service -Name $svc.Name -Force
+        Write-Host "   Restarting active service : $($svc.Name)..." -ForegroundColor White
+        Restart-Service -Name $svc.Name -Force -WarningAction SilentlyContinue
+        Write-Host "   Service state             : Running (active)" -ForegroundColor Green
       }
+    } else {
+      Write-Host "   No active VPN services running. Service restart not required." -ForegroundColor Gray
     }
 
-    Write-Host "Upgrade to openconnectsg $newVer completed successfully."
+    Write-Host ""
+    Write-Host " ==============================================================================" -ForegroundColor DarkGray
+    Write-Host "  Upgrade completed successfully! (openconnectsg $newVer)" -ForegroundColor Green
+    Write-Host " ==============================================================================" -ForegroundColor DarkGray
+    Write-Host ""
     return 0
   } finally {
     if (Test-Path $tempWorkDir) {
@@ -804,9 +866,8 @@ namespace OpenConnectSg {
 }
 
 function Show-Usage {
+  Show-Banner "Command Line Interface Reference"
   $usage = @'
-openconnectsg - Unified OpenConnect VPN Management CLI
-
 Usage:
   openconnectsg                           List profiles (= list, * indicates default)
   openconnectsg list                      List all profiles and status
@@ -819,7 +880,8 @@ Usage:
   openconnectsg remove <profile>          Remove profile and unregister Windows service
   openconnectsg upgrade [<source>]        Upgrade openconnectsg system binaries to latest version
   openconnectsg uninstall [<scope>]       Uninstall openconnectsg (scope: app or full)
-  openconnectsg version                   Display tool version
+  openconnectsg version                   Display tool version and system details
+  openconnectsg banner                    Display welcome ASCII banner
   openconnectsg help                      Display this help screen
 
 Aliases:
@@ -864,7 +926,8 @@ try {
     'un'           { $exitCode = Do-Uninstall  $a1 }
     'purge'        { $exitCode = Do-Uninstall  $a1 }
     'service-run'  { Do-ServiceRun $a1 } # Daemon runner invoked by Windows Service
-    'version'      { Write-Host "openconnectsg $script:Version" }
+    'version'      { Show-Version }
+    'banner'       { Show-Banner }
     '-v'           { Write-Host "openconnectsg $script:Version" }
     '--version'    { Write-Host "openconnectsg $script:Version" }
     'help'         { Show-Usage }
