@@ -103,10 +103,24 @@ openconnectsg disconnect all       # 모든 활성 VPN 연결 해제
 | `openconnectsg remove <p>` | `rm`, `delete` | 프로필 구성 삭제 및 Windows 서비스 영구 등록 해제 |
 | `openconnectsg upgrade [<p>]` | `update` | 최신 소스로 바이너리 업그레이드 및 서비스 재시작 |
 | `openconnectsg uninstall [<s\>]` | `un`, `purge` | 도구 제거 (범위: `app` 앱 전용 삭제, `full` 전체 완전 삭제) |
-| `openconnectsg version` | `-v` | 현재 버전 출력 (`0.1.2`) |
+| `openconnectsg version` | `-v` | 현재 버전 출력 (`0.1.2b`) |
 | `openconnectsg help` | `-h` | CLI 도움말 화면 출력 |
 
 자세한 사용법은 [서브커맨드 메뉴얼](docs/subcommand-manual.md)을 참조하십시오.
+
+---
+
+## 🚀 릴리스 및 변경 관리 (Release Notes)
+
+- **v0.1.2b (2026-10-14)**:
+  - **초기 설치 화면 고도화**: `install-openconnectsg.ps1` 실행 완료 시 Slant ASCII Figlet 아트 기반의 세련된 터미널 Welcome Banner 출력.
+  - **환경 및 의존성 브리핑**: 설치 대상 경로(`DEPLOY`), 시스템 환경변수(`PATH`), 필수 패키지(`OpenConnect CLI`, `NSSM`) 및 핵심 아키텍처(`DPAPI Encrypted Credential`, `Wintun Kernel Adapter`)를 명확히 안내.
+  - **직관적인 Quick Start 가이드**: 터미널 환경 새로고침 및 첫 `setup` 실행 안내를 컬러 콘솔 뷰로 제공.
+  - **문서화 및 변경 관리 동기화**: `install-guide.md`, `openconnectsg.md`, `CITATION.cff`, `llms-full.txt` 버전 `v0.1.2b` 일원화.
+- **v0.1.2a (2026-10-13)**:
+  - 언인스톨러 스코프(`app`/`full`) 분리, 다중 프로필 관리 및 LLM 명세 체계화.
+- **v0.1.1b (2026-10-11)**:
+  - DPAPI 암호화 및 NSSM 서비스 데몬 오케스트레이션 최초 통합.
 
 ---
 

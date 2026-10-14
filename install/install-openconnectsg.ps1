@@ -121,7 +121,7 @@ if (-not (($mp -split ';') -contains $BinDir)) {
 # Verification and installation marker
 $cmd = Join-Path $BinDir 'openconnectsg.cmd'
 if (Test-Path $cmd) {
-  $ver = '0.1.2a'
+  $ver = '0.1.2b'
   $marker = "version=$ver`r`nsource=$SourceDir`r`ninstalled=$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')`r`n"
   [System.IO.File]::WriteAllText((Join-Path $BinDir '.installed'), $marker, (New-Object System.Text.UTF8Encoding($false)))
   Write-Host "Installed openconnectsg $ver."
@@ -129,15 +129,59 @@ if (Test-Path $cmd) {
   & $cmd version
 }
 
-Write-Host "============================================================"
-Write-Host "  Installation completed successfully! (openconnectsg $ver)"
-Write-Host "============================================================"
+# Detect dependency versions if installed
+$detectedNssm = 'Pending Setup'
+$nssmPath = 'C:\Program Files\nssm\nssm.exe'
+if (Test-Path $nssmPath) {
+  try {
+    $vi = (Get-Item $nssmPath).VersionInfo.ProductVersion
+    if (-not [string]::IsNullOrWhiteSpace($vi)) { $detectedNssm = "v$vi" }
+  } catch { }
+}
+
+$detectedOc = 'Pending Setup'
+$ocPath = 'C:\Program Files\OpenConnect\openconnect.exe'
+if (Test-Path $ocPath) {
+  try {
+    $rawOcVer = (& $ocPath --version 2>&1 | Select-Object -First 1)
+    if ($rawOcVer -match 'v[\d\.]+') {
+      $detectedOc = $Matches[0]
+    } elseif (-not [string]::IsNullOrWhiteSpace($rawOcVer)) {
+      $detectedOc = ($rawOcVer -split ' ')[1]
+    }
+  } catch { }
+}
+
 Write-Host ""
-Write-Host "[Action Required] To use 'openconnectsg' in your current terminal:"
-Write-Host "  `$env:Path = [Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' + [Environment]::GetEnvironmentVariable('Path', 'User')"
+Write-Host "   ____                   ______                            __   _____       " -ForegroundColor Cyan
+Write-Host "  / __ \____  ___  ____  / ____/___  ____  ____  ___  _____/ /_ / ___/____ _ " -ForegroundColor Cyan
+Write-Host " / / / / __ \/ _ \/ __ \/ /   / __ \/ __ \/ __ \/ _ \/ ___/ __/ \__ \/ __ `/ " -ForegroundColor Cyan
+Write-Host "/ /_/ / /_/ /  __/ / / / /___/ /_/ / / / / / / /  __/ /__/ /_   ___/ / /_/ /  " -ForegroundColor Cyan
+Write-Host "\____/ .___/\___/_/ /_/\____/\____/_/ /_/_/ /_/\___/\___/\__/  /____/\__, /   " -ForegroundColor Cyan
+Write-Host "    /_/                                                             /____/    " -ForegroundColor Cyan
+Write-Host " ==============================================================================" -ForegroundColor DarkGray
+Write-Host "  OpenConnectSg :: Windows Background Daemon & DPAPI Automation Wrapper (v$ver)" -ForegroundColor White
+Write-Host " ==============================================================================" -ForegroundColor DarkGray
+Write-Host "  [DEPLOY]   Target   : $BinDir" -ForegroundColor DarkCyan
+Write-Host "  [SYSTEM]   PATH     : Successfully registered (Machine Scope)" -ForegroundColor DarkCyan
+Write-Host "  [PACKAGES] Required : OpenConnect CLI $detectedOc, NSSM $detectedNssm" -ForegroundColor DarkCyan
+Write-Host "  [FEATURES] Windows DPAPI Encrypted Credential (pw.bin), Wintun Kernel Tunnel Adapter" -ForegroundColor Gray
 Write-Host ""
-Write-Host "Or simply open a NEW PowerShell window and run:"
-Write-Host "  openconnectsg setup       # Run configuration wizard"
-Write-Host "  openconnectsg version     # Check installed version"
-Write-Host "============================================================"
+Write-Host " ------------------------------------------------------------------------------" -ForegroundColor DarkGray
+Write-Host "  QUICK START INSTRUCTIONS" -ForegroundColor Green
+Write-Host " ------------------------------------------------------------------------------" -ForegroundColor DarkGray
+Write-Host "  1. Reload PATH in current session (or open a new terminal):" -ForegroundColor White
+Write-Host "     `$env:Path = [Environment]::GetEnvironmentVariable('Path','Machine') + ';' +" -ForegroundColor Yellow
+Write-Host "                 [Environment]::GetEnvironmentVariable('Path','User')" -ForegroundColor Yellow
+Write-Host ""
+Write-Host "  2. Run the interactive setup wizard:" -ForegroundColor White
+Write-Host "     openconnectsg setup" -ForegroundColor Yellow
+Write-Host ""
+Write-Host "  3. Connect and verify service status:" -ForegroundColor White
+Write-Host "     openconnectsg connect" -ForegroundColor Yellow
+Write-Host "     openconnectsg status" -ForegroundColor Yellow
+Write-Host ""
+Write-Host "  For all subcommands and syntax: openconnectsg help" -ForegroundColor DarkGray
+Write-Host " ==============================================================================" -ForegroundColor DarkGray
+Write-Host ""
 

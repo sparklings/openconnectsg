@@ -308,9 +308,9 @@ openconnectsg <서브커맨드> [인자1] [인자2] ...
   === openconnectsg System Upgrade ===
   Cloning latest release from https://github.com/sparklings/openconnectsg.git...
   Successfully cloned repository.
-  Deploying openconnectsg 0.1.2 to C:\Program Files\OpenConnect\bin...
+  Deploying openconnectsg 0.1.2b to C:\Program Files\OpenConnect\bin...
   Restarting active service: openconnect_203.231.7.150_10443_103995b4...
-  Upgrade to openconnectsg 0.1.2 completed successfully.
+  Upgrade to openconnectsg 0.1.2b completed successfully.
   ```
 
 ---
@@ -327,7 +327,7 @@ openconnectsg <서브커맨드> [인자1] [인자2] ...
   ```
 - **실행 결과**:
   ```powershell
-  openconnectsg 0.1.2
+  openconnectsg 0.1.2b
   ```
 
 ---

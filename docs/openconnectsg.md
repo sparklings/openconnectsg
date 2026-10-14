@@ -1,4 +1,4 @@
-# openconnectsg — OpenConnect 원격접속 자동화 (v0.1.1b)
+# openconnectsg — OpenConnect 원격접속 자동화 (v0.1.2b)
 
 원격VPN서버 뒤 원격 내부 네트워크 서버자원에 **NSSM + openconnect CLI**로 자동 접속하는 Windows용 경량 CLI 도구.
 초기 프로필 설정부터 백그라운드 데몬 서비스 운영, 클린 삭제(`uninstall`)까지 단일 명령 `openconnectsg`로 수행합니다.
@@ -107,3 +107,14 @@ Get-Content "C:\Program Files\OpenConnect\profiles\<서비스명>\logs\out.log" 
 - 지문 불일치 $\rightarrow$ `profiles\<서비스명>\pin.txt` 갱신.
 - 다중 연결 해제 $\rightarrow$ `openconnectsg disconnect all`.
 - 완전 삭제 및 초기화 $\rightarrow$ `openconnectsg uninstall` (또는 `-Scope full`).
+
+---
+
+## 6. 버전 및 변경 이력 (Version History)
+
+| 버전 | 일자 | 주요 변경 내용 |
+|---|---|---|
+| **v0.1.2b** | 2026-10-14 | **초기 설치 화면 고도화**: Slant ASCII 아트 기반의 Welcome 메시지 배너 추가, 필수 패키지(`OpenConnect CLI`, `NSSM`) 및 핵심 기능(`DPAPI`, `Wintun`) 안내, 직관적인 Quick Start 가이드 터미널 출력 지원 |
+| **v0.1.2a** | 2026-10-13 | 다중 프로필 인덱스/별칭 라우팅 최적화, 전역 뮤텍스 기반 단일 터널 보장, 언인스톨러 스코프(`app`/`full`) 분리, LLM 명세 파일(`llms.txt`, `llms-full.txt`) 탑재 |
+| **v0.1.1b** | 2026-10-11 | DPAPI LocalMachine 비밀번호 암호화 보관, NSSM 기반 Windows 서비스 등록 마법사(`init-openconnectsg.ps1`), RFC 7469 인증서 지문 고정 |
+

@@ -68,9 +68,46 @@ powershell -ExecutionPolicy Bypass -File .\install\install-openconnectsg.ps1 -Sk
 
 ---
 
-## 4. 설치 후 확인 및 초기 설정 (Post-Installation)
+## 4. 설치 완료 화면 및 초기 설정 (Post-Installation)
 
-### 4.1. 명령어 활성화 (중요)
+### 4.1. 설치 완료 배너 (Welcome Banner)
+
+설치가 성공적으로 완료되면 터미널에 다음과 같은 웰컴 배너와 퀵스타트 가이드가 출력됩니다:
+
+```text
+   ____                   ______                            __   _____       
+  / __ \____  ___  ____  / ____/___  ____  ____  ___  _____/ /_ / ___/____ _ 
+ / / / / __ \/ _ \/ __ \/ /   / __ \/ __ \/ __ \/ _ \/ ___/ __/ \__ \/ __ `/ 
+/ /_/ / /_/ /  __/ / / / /___/ /_/ / / / / / / /  __/ /__/ /_   ___/ / /_/ /  
+\____/ .___/\___/_/ /_/\____/\____/_/ /_/_/ /_/\___/\___/\__/  /____/\__, /   
+    /_/                                                             /____/    
+ ==============================================================================
+  OpenConnectSg :: Windows Background Daemon & DPAPI Automation Wrapper (v0.1.2b)
+ ==============================================================================
+  [DEPLOY]   Target   : C:\Program Files\OpenConnect\bin
+  [SYSTEM]   PATH     : Successfully registered (Machine Scope)
+  [PACKAGES] Required : OpenConnect CLI v9.21, NSSM v2.24
+  [FEATURES] Windows DPAPI Encrypted Credential (pw.bin), Wintun Kernel Tunnel Adapter
+
+ ------------------------------------------------------------------------------
+  QUICK START INSTRUCTIONS
+ ------------------------------------------------------------------------------
+  1. Reload PATH in current session (or open a new terminal):
+     $env:Path = [Environment]::GetEnvironmentVariable('Path','Machine') + ';' +
+                 [Environment]::GetEnvironmentVariable('Path','User')
+
+  2. Run the interactive setup wizard:
+     openconnectsg setup
+
+  3. Connect and verify service status:
+     openconnectsg connect
+     openconnectsg status
+
+  For all subcommands and syntax: openconnectsg help
+ ==============================================================================
+```
+
+### 4.2. 명령어 활성화 (중요)
 
 Windows는 설치 프로그램(자식 프로세스)이 시스템 PATH를 변경해도 **이미 열려 있는 기존 터미널 세션에는 새 PATH가 자동으로 갱신되지 않습니다**.
 
@@ -80,13 +117,13 @@ Windows는 설치 프로그램(자식 프로세스)이 시스템 PATH를 변경�
   $env:Path = [Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' + [Environment]::GetEnvironmentVariable('Path', 'User')
   ```
 
-### 4.2. 설치 확인
+### 4.3. 설치 확인
 ```powershell
 openconnectsg version
-# 출력: openconnectsg 0.1.2
+# 출력: openconnectsg 0.1.2b
 ```
 
-### 4.3. 초기 프로필 등록 마법사 실행
+### 4.4. 초기 프로필 등록 마법사 실행
 ```powershell
 openconnectsg setup
 ```
