@@ -13,7 +13,7 @@
 $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $OutputEncoding = [System.Text.Encoding]::UTF8
-$script:Version = '0.1.2b'
+$script:Version = '0.1.2c'
 
 $ocRoot      = 'C:\Program Files\OpenConnect'
 $root        = Join-Path $ocRoot 'profiles'
@@ -85,13 +85,35 @@ function Get-Profiles {
 function Show-List {
   param($profiles)
   if (@($profiles).Count -eq 0) {
-    Write-Host 'No registered profiles found. Run: openconnectsg setup'
+    Write-Host ""
+    Write-Host " ==============================================================================" -ForegroundColor DarkGray
+    Write-Host "  OpenConnectSg :: Profiles" -ForegroundColor White
+    Write-Host " ==============================================================================" -ForegroundColor DarkGray
+    Write-Host "  No registered profiles found. Run: openconnectsg setup" -ForegroundColor Yellow
+    Write-Host " ==============================================================================" -ForegroundColor DarkGray
+    Write-Host ""
     return
   }
-  Write-Host ('{0,-2}{1,-3} {2,-18} {3,-24} {4,-12} {5}' -f '', '#', 'User', 'Server', 'Alias', 'Status')
+  Write-Host ""
+  Write-Host " ==============================================================================" -ForegroundColor DarkGray
+  Write-Host "  OpenConnectSg :: Profiles" -ForegroundColor White
+  Write-Host " ==============================================================================" -ForegroundColor DarkGray
+  Write-Host ('  {0,-3} {1,-3} {2,-16} {3,-26} {4,-10} {5}' -f '#', 'DEF', 'USER', 'SERVER', 'ALIAS', 'STATUS') -ForegroundColor Cyan
+  Write-Host " ------------------------------------------------------------------------------" -ForegroundColor DarkGray
   foreach ($p in $profiles) {
-    Write-Host ('{0,-2}{1,-3} {2,-18} {3,-24} {4,-12} {5}' -f ($(if ($p.IsDefault) { '*' } else { '' })), $p.Index, $p.User, $p.Server, $p.Alias, $p.Status)
+    $defMark = if ($p.IsDefault) { '*' } else { ' ' }
+    $aliasStr = if ($p.Alias) { $p.Alias } else { '-' }
+    $stColor = if ($p.Status -eq 'Running') { 'Green' } elseif ($p.Status -eq 'Stopped') { 'DarkGray' } else { 'Yellow' }
+    Write-Host ('  {0,-3} {1,-3} {2,-16} {3,-26} {4,-10} ' -f $p.Index, $defMark, $p.User, $p.Server, $aliasStr) -NoNewline
+    Write-Host $p.Status -ForegroundColor $stColor
   }
+  Write-Host " ------------------------------------------------------------------------------" -ForegroundColor DarkGray
+  if (Test-Path $defaultFile) {
+    $defName = (Get-Content $defaultFile -Raw).Trim()
+    Write-Host "  Default profile: $defName" -ForegroundColor DarkCyan
+  }
+  Write-Host " ==============================================================================" -ForegroundColor DarkGray
+  Write-Host ""
 }
 
 function Resolve-Profile {
@@ -170,75 +192,157 @@ function Do-Connect {
       Set-Content -Path $profConf -Value $cLines -Encoding ascii
     } catch {}
   }
+
+  Write-Host ""
+  Write-Host " ==============================================================================" -ForegroundColor DarkGray
+  Write-Host "  OpenConnectSg :: Connect" -ForegroundColor White
+  Write-Host " ==============================================================================" -ForegroundColor DarkGray
+  Write-Host ""
+
   # Single active connection policy: disconnect any other active tunnels
-  foreach ($p in $profiles) {
-    if ($p.Name -ne $t.Name -and $p.Status -eq 'Running') {
-      Write-Host "disconnect $($p.Name)"
+  $otherRunning = @($profiles | Where-Object { $_.Name -ne $t.Name -and $_.Status -eq 'Running' })
+  if ($otherRunning.Count -gt 0) {
+    Write-Host " [1/2] Enforcing single-tunnel policy..." -ForegroundColor Cyan
+    foreach ($p in $otherRunning) {
+      Write-Host "   Disconnecting other active session: $($p.Name)..." -ForegroundColor Gray
       [void](Invoke-Nssm @('stop', $p.Name))
     }
+    Write-Host "   Conflicting sessions closed." -ForegroundColor Green
+    Write-Host ""
   }
+
   $cur = Get-Service -Name $t.Name -ErrorAction SilentlyContinue
   if ($cur -and [string]$cur.Status -eq 'Running') {
-    Write-Host "Already connected: $($t.Name)"
-  } else {
-    if ($cur -and [string]$cur.Status -eq 'StopPending') {
-      [void](Wait-ServiceStatus $t.Name 'Stopped' 10)
-    }
-    Write-Host "connect $($t.Name)"
-    [void](Invoke-Nssm @('start', $t.Name))
+    Write-Host " Already connected: $($t.Name)" -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host " ==============================================================================" -ForegroundColor DarkGray
+    Write-Host "  Status: Running" -ForegroundColor Green
+    Write-Host " ==============================================================================" -ForegroundColor DarkGray
+    Write-Host ""
+    return 0
   }
+
+  Write-Host " [2/2] Starting service..." -ForegroundColor Cyan
+  Write-Host "   Target Service : $($t.Name)" -ForegroundColor White
+  if ($cur -and [string]$cur.Status -eq 'StopPending') {
+    Write-Host "   Waiting for previous session teardown..." -ForegroundColor Gray
+    [void](Wait-ServiceStatus $t.Name 'Stopped' 10)
+  }
+
+  [void](Invoke-Nssm @('start', $t.Name))
   Set-Content $defaultFile $t.Name -NoNewline -Encoding ascii
+
+  Write-Host "   Waiting for running status..." -ForegroundColor Gray
   $final = Wait-ServiceStatus $t.Name 'Running' 15
   if ($final -ne 'Running') {
-    Write-Host "Warning: Service failed to reach Running state (Current: $final)"
     $errFile = "$root\$($t.Name)\logs\err.log"
     $outFile = "$root\$($t.Name)\logs\out.log"
     $combined = ""
     if (Test-Path $errFile) { $combined += "`n" + ((Get-Content $errFile -Tail 5 -ErrorAction SilentlyContinue) -join "`n") }
     if (Test-Path $outFile) { $combined += "`n" + ((Get-Content $outFile -Tail 5 -ErrorAction SilentlyContinue) -join "`n") }
+
+    Write-Host ""
+    Write-Host " ==============================================================================" -ForegroundColor DarkGray
+    Write-Host "  OpenConnectSg :: Connection Error" -ForegroundColor Red
+    Write-Host " ==============================================================================" -ForegroundColor DarkGray
+    Write-Host ""
+    Write-Host " [Failure Reason]" -ForegroundColor Cyan
     if ($combined -match 'sslvpn_login_permission_denied|Permission denied') {
-      Write-Warning "Authentication failed: VPN server returned 'Permission denied'."
-      Write-Host "  Possible causes: Server-side account authorization policy, user group restrictions, or invalid credentials."
+      Write-Host "   Authentication failed: VPN server returned 'Permission denied'." -ForegroundColor Yellow
+      Write-Host "   Server message: sslvpn_login_permission_denied" -ForegroundColor Gray
+      Write-Host ""
+      Write-Host " [Possible Causes]" -ForegroundColor Cyan
+      Write-Host "   - Server-side account authorization policy or user group restriction" -ForegroundColor White
+      Write-Host "   - Invalid or expired credentials" -ForegroundColor White
     } elseif ($combined -match 'Too many bad login attempts') {
-      Write-Warning "Authentication blocked: Too many bad login attempts. Please wait a few minutes before trying again."
+      Write-Host "   Authentication blocked: Too many bad login attempts." -ForegroundColor Yellow
+      Write-Host ""
+      Write-Host " [Possible Causes]" -ForegroundColor Cyan
+      Write-Host "   - Temporary lock by firewall security policy. Wait a few minutes." -ForegroundColor White
     } elseif ($combined -match 'Failed to complete authentication|fgetws') {
-      Write-Warning "Authentication failed: VPN server rejected credentials or interactive prompt timed out."
-    } elseif (-not [string]::IsNullOrWhiteSpace($combined.Trim())) {
-      Write-Host "  Error detail:"
-      Write-Host "  $($combined.Trim())"
+      Write-Host "   Authentication failed: VPN server rejected credentials." -ForegroundColor Yellow
+      Write-Host ""
+      Write-Host " [Possible Causes]" -ForegroundColor Cyan
+      Write-Host "   - Invalid password or prompt timeout." -ForegroundColor White
+    } else {
+      Write-Host "   Service failed to reach Running state (Current: $final)" -ForegroundColor Yellow
+      if (-not [string]::IsNullOrWhiteSpace($combined.Trim())) {
+        Write-Host "   $($combined.Trim())" -ForegroundColor Gray
+      }
     }
-    Write-Host "  Log files: $errFile | $outFile"
+    Write-Host ""
+    Write-Host " [Log Files]" -ForegroundColor Cyan
+    Write-Host "   $outFile" -ForegroundColor DarkCyan
+    Write-Host "   $errFile" -ForegroundColor DarkCyan
+    Write-Host ""
+    Write-Host " ==============================================================================" -ForegroundColor DarkGray
+    Write-Host ""
     return 1
   }
-  Write-Host "Status: Running"
+
+  Write-Host "   Service reached Running status." -ForegroundColor Green
+  Write-Host ""
+  Write-Host " ==============================================================================" -ForegroundColor DarkGray
+  Write-Host "  Status: Running" -ForegroundColor Green
+  Write-Host " ==============================================================================" -ForegroundColor DarkGray
+  Write-Host ""
   return 0
 }
 
 function Do-Disconnect {
   param($profiles, $token)
+  Write-Host ""
+  Write-Host " ==============================================================================" -ForegroundColor DarkGray
+  Write-Host "  OpenConnectSg :: Disconnect" -ForegroundColor White
+  Write-Host " ==============================================================================" -ForegroundColor DarkGray
+  Write-Host ""
+
   if ([string]::IsNullOrWhiteSpace($token) -or $token -eq 'all') {
     $rc = 0
-    foreach ($p in $profiles) {
-      if ($p.Status -eq 'Running') {
-        Write-Host "disconnect $($p.Name)"
+    $runningProfiles = @($profiles | Where-Object { $_.Status -eq 'Running' })
+    if ($runningProfiles.Count -eq 0) {
+      Write-Host "  No active tunnels are currently running." -ForegroundColor DarkGray
+    } else {
+      Write-Host " Stopping active tunnels:" -ForegroundColor Cyan
+      foreach ($p in $runningProfiles) {
+        Write-Host "   - $($p.Name) ... " -NoNewline
         [void](Invoke-Nssm @('stop', $p.Name))
         if ((Wait-ServiceStatus $p.Name 'Stopped' 15) -ne 'Stopped') {
-          Write-Host "Warning: Service $($p.Name) failed to stop gracefully."
+          Write-Host "Failed to stop." -ForegroundColor Yellow
           $rc = 1
+        } else {
+          Write-Host "Stopped." -ForegroundColor Green
         }
       }
     }
+    Write-Host ""
+    Write-Host " ==============================================================================" -ForegroundColor DarkGray
+    Write-Host "  Status: Disconnected" -ForegroundColor Green
+    Write-Host " ==============================================================================" -ForegroundColor DarkGray
+    Write-Host ""
     return $rc
   }
+
   $t = Resolve-Profile $profiles $token
-  Write-Host "disconnect $($t.Name)"
+  Write-Host " Stopping tunnel:" -ForegroundColor Cyan
+  Write-Host "   - $($t.Name) ... " -NoNewline
   [void](Invoke-Nssm @('stop', $t.Name))
   $final = Wait-ServiceStatus $t.Name 'Stopped' 15
   if ($final -ne 'Stopped') {
-    Write-Host "Warning: Failed to stop service (Current: $final)"
+    Write-Host "Failed (Current: $final)" -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host " ==============================================================================" -ForegroundColor DarkGray
+    Write-Host "  Warning: Service did not stop gracefully." -ForegroundColor Yellow
+    Write-Host " ==============================================================================" -ForegroundColor DarkGray
+    Write-Host ""
     return 1
   }
-  Write-Host "Status: Stopped"
+  Write-Host "Stopped." -ForegroundColor Green
+  Write-Host ""
+  Write-Host " ==============================================================================" -ForegroundColor DarkGray
+  Write-Host "  Status: Disconnected" -ForegroundColor Green
+  Write-Host " ==============================================================================" -ForegroundColor DarkGray
+  Write-Host ""
   return 0
 }
 
@@ -265,18 +369,25 @@ function Do-Status {
   $s = Get-Service -Name $t.Name -ErrorAction SilentlyContinue
   $status = if ($s) { [string]$s.Status } else { 'N/A' }
 
-  Write-Host "Profile Details:"
-  Write-Host "  Name       : $($t.Name)"
-  Write-Host "  Index      : $($t.Index)"
-  Write-Host "  Alias      : $(if ($t.Alias) { $t.Alias } else { '(none)' })"
-  Write-Host "  User       : $($t.User)"
-  Write-Host "  Server     : $($t.Server)"
-  Write-Host "  Status     : $status"
-  Write-Host "  Default    : $(if ($t.IsDefault) { 'Yes' } else { 'No' })"
+  Write-Host ""
+  Write-Host " ==============================================================================" -ForegroundColor DarkGray
+  Write-Host "  OpenConnectSg :: Profile Status" -ForegroundColor White
+  Write-Host " ==============================================================================" -ForegroundColor DarkGray
+  Write-Host ""
+  Write-Host " [Profile Details]" -ForegroundColor Cyan
+  Write-Host "   Name       : $($t.Name)" -ForegroundColor White
+  Write-Host "   Index      : $($t.Index)" -ForegroundColor White
+  Write-Host "   Alias      : $(if ($t.Alias) { $t.Alias } else { '(none)' })" -ForegroundColor White
+  Write-Host "   User       : $($t.User)" -ForegroundColor White
+  Write-Host "   Server     : $($t.Server)" -ForegroundColor White
+  Write-Host "   Status     : $status" -ForegroundColor $(if ($status -eq 'Running') { 'Green' } else { 'DarkGray' })
+  Write-Host "   Default    : $(if ($t.IsDefault) { 'Yes' } else { 'No' })" -ForegroundColor White
 
   $profDir = Join-Path $root $t.Name
   $hbFile = Join-Path $profDir 'heartbeat.status'
   if ($status -eq 'Running') {
+    Write-Host ""
+    Write-Host " [Heartbeat Monitor]" -ForegroundColor Cyan
     if (Test-Path $hbFile) {
       $hbRaw = Get-Content $hbFile -Raw -ErrorAction SilentlyContinue
       $lastRecv = if ($hbRaw -match 'LastReceived=([^\r\n]+)') { $matches[1].Trim() } else { $null }
@@ -285,35 +396,46 @@ function Do-Status {
         try {
           $secAgo = [math]::Max(0, [int]((Get-Date) - [DateTime]::Parse($lastRecv)).TotalSeconds)
           if ($secAgo -le 30) {
-            Write-Host "  Heartbeat  : ALIVE ($secAgo s ago, packets: $hbCount)" -ForegroundColor Green
+            Write-Host "   Status     : ALIVE ($secAgo s ago, packets: $hbCount)" -ForegroundColor Green
           } elseif ($secAgo -le 90) {
-            Write-Host "  Heartbeat  : IDLE ($secAgo s ago, packets: $hbCount)" -ForegroundColor Yellow
+            Write-Host "   Status     : IDLE ($secAgo s ago, packets: $hbCount)" -ForegroundColor Yellow
           } else {
-            Write-Host "  Heartbeat  : STALE ($secAgo s ago, packets: $hbCount)" -ForegroundColor Red
+            Write-Host "   Status     : STALE ($secAgo s ago, packets: $hbCount)" -ForegroundColor Red
           }
         } catch {
-          Write-Host "  Heartbeat  : Recorded ($lastRecv, packets: $hbCount)"
+          Write-Host "   Status     : Recorded ($lastRecv, packets: $hbCount)" -ForegroundColor DarkCyan
         }
       }
     } else {
-      Write-Host "  Heartbeat  : Waiting for keepalive..." -ForegroundColor DarkGray
+      Write-Host "   Status     : Waiting for keepalive packets..." -ForegroundColor DarkGray
     }
   }
 
   $errFile = Join-Path $profDir 'logs\err.log'
+  $hasErr = $false
   if (Test-Path $errFile) {
     $errLen = (Get-Item $errFile).Length
     if ($errLen -gt 0) {
       $recentErr = (Get-Content $errFile -Tail 3 -ErrorAction SilentlyContinue) -join "`n"
       if (-not [string]::IsNullOrWhiteSpace($recentErr.Trim())) {
-        Write-Host "  Recent Error:" -ForegroundColor Red
+        $hasErr = $true
+        Write-Host ""
+        Write-Host " [Recent Error]" -ForegroundColor Red
         $recentErr.Split("`n") | ForEach-Object {
-          if (-not [string]::IsNullOrWhiteSpace($_)) { Write-Host "    $_" -ForegroundColor DarkRed }
+          if (-not [string]::IsNullOrWhiteSpace($_)) { Write-Host "   $_" -ForegroundColor DarkRed }
         }
       }
     }
   }
+  if (-not $hasErr) {
+    Write-Host ""
+    Write-Host " [Recent Error]" -ForegroundColor Cyan
+    Write-Host "   None (Logs are clean)" -ForegroundColor DarkGray
+  }
 
+  Write-Host ""
+  Write-Host " ==============================================================================" -ForegroundColor DarkGray
+  Write-Host ""
   return 0
 }
 
@@ -324,16 +446,30 @@ function Do-Default {
       $def = (Get-Content $defaultFile -Raw).Trim()
       $hit = @($profiles | Where-Object { $_.Name -eq $def })
       if ($hit.Count -eq 1) {
-        Write-Host "default = $($hit[0].Name) (Alias: $($hit[0].Alias), User: $($hit[0].User))"
+        Write-Host ""
+        Write-Host " ==============================================================================" -ForegroundColor DarkGray
+        Write-Host "  OpenConnectSg :: Current Default Profile" -ForegroundColor White
+        Write-Host " ==============================================================================" -ForegroundColor DarkGray
+        Write-Host "   Default Profile : $($hit[0].Name)" -ForegroundColor White
+        Write-Host "   Alias / User    : $(if ($hit[0].Alias) { $hit[0].Alias } else { '(none)' }) ($($hit[0].User))" -ForegroundColor DarkCyan
+        Write-Host " ==============================================================================" -ForegroundColor DarkGray
+        Write-Host ""
         return 0
       }
     }
-    Write-Host "No default profile set. Syntax: openconnectsg default <profile>"
+    Write-Host "No default profile set. Syntax: openconnectsg default <profile>" -ForegroundColor Yellow
     return 1
   }
   $t = Resolve-Profile $profiles $token
   Set-Content $defaultFile $t.Name -NoNewline -Encoding ascii
-  Write-Host "default = $($t.Name)"
+  Write-Host ""
+  Write-Host " ==============================================================================" -ForegroundColor DarkGray
+  Write-Host "  OpenConnectSg :: Set Default Profile" -ForegroundColor White
+  Write-Host " ==============================================================================" -ForegroundColor DarkGray
+  Write-Host "   Default Profile : $($t.Name)" -ForegroundColor White
+  Write-Host "   Alias / User    : $(if ($t.Alias) { $t.Alias } else { '(none)' }) ($($t.User))" -ForegroundColor Green
+  Write-Host " ==============================================================================" -ForegroundColor DarkGray
+  Write-Host ""
   return 0
 }
 
@@ -344,7 +480,14 @@ function Do-Alias {
   }
   $t = Resolve-Profile $profiles $token
   Set-Content (Join-Path (Join-Path $root $t.Name) 'label.txt') $alias -NoNewline -Encoding utf8
-  Write-Host "alias '$alias' -> $($t.Name)"
+  Write-Host ""
+  Write-Host " ==============================================================================" -ForegroundColor DarkGray
+  Write-Host "  OpenConnectSg :: Assign Alias" -ForegroundColor White
+  Write-Host " ==============================================================================" -ForegroundColor DarkGray
+  Write-Host "   Target Profile  : $($t.Name)" -ForegroundColor White
+  Write-Host "   Assigned Alias  : $alias" -ForegroundColor Green
+  Write-Host " ==============================================================================" -ForegroundColor DarkGray
+  Write-Host ""
   return 0
 }
 
@@ -354,17 +497,42 @@ function Do-Remove {
     throw 'Please specify a profile to remove. Syntax: openconnectsg remove <profile>'
   }
   $t = Resolve-Profile $profiles $token
-  Write-Host "Target: $($t.Name) (User: $($t.User))"
-  if ($t.Status -eq 'Running') { Write-Host '  Notice: Service is active. Will be terminated prior to removal.' }
-  $ans = (Read-Host "This will stop the service, unregister it, and purge the profile directory. Type 'yes' to proceed").Trim()
-  if ($ans -ne 'yes') { Write-Host 'Cancelled.'; return 0 }
+
+  Write-Host ""
+  Write-Host " ==============================================================================" -ForegroundColor DarkGray
+  Write-Host "  OpenConnectSg :: Remove Profile" -ForegroundColor White
+  Write-Host " ==============================================================================" -ForegroundColor DarkGray
+  Write-Host ""
+  Write-Host " Target Profile:" -ForegroundColor Cyan
+  Write-Host "   Name   : $($t.Name)" -ForegroundColor White
+  Write-Host "   User   : $($t.User)" -ForegroundColor White
+  Write-Host "   Status : $($t.Status)$(if ($t.Status -eq 'Running') { ' (will be stopped before removal)' })" -ForegroundColor White
+  Write-Host ""
+  Write-Host " This will stop the service, unregister it, and purge the profile directory." -ForegroundColor Yellow
+  $ans = (Read-Host " Type 'yes' to proceed").Trim()
+  if ($ans -ne 'yes') {
+    Write-Host " Removal cancelled." -ForegroundColor DarkGray
+    return 0
+  }
+
+  Write-Host ""
+  Write-Host " Removing profile and service..." -ForegroundColor Cyan
   [void](Invoke-Nssm @('stop', $t.Name))
+  Write-Host "   - Service stopped" -ForegroundColor Gray
   [void](Invoke-Nssm @('remove', $t.Name, 'confirm'))
+  Write-Host "   - Service unregistered" -ForegroundColor Gray
   Remove-Item (Join-Path $root $t.Name) -Recurse -Force -ErrorAction SilentlyContinue
+  Write-Host "   - Profile files purged" -ForegroundColor Gray
+
   if ((Test-Path $defaultFile) -and ((Get-Content $defaultFile -Raw).Trim() -eq $t.Name)) {
     Remove-Item $defaultFile -Force -ErrorAction SilentlyContinue
   }
-  Write-Host "Removed profile and service: $($t.Name)"
+
+  Write-Host ""
+  Write-Host " ==============================================================================" -ForegroundColor DarkGray
+  Write-Host "  Profile removed successfully." -ForegroundColor Green
+  Write-Host " ==============================================================================" -ForegroundColor DarkGray
+  Write-Host ""
   return 0
 }
 
@@ -392,9 +560,10 @@ function Do-Uninstall {
     throw "Administrative privileges are required to uninstall. Please run in an elevated administrator shell."
   }
 
-  Write-Host "========================================"
-  Write-Host "    openconnectsg Uninstaller"
-  Write-Host "========================================"
+  Write-Host ""
+  Write-Host " ==============================================================================" -ForegroundColor DarkGray
+  Write-Host "  OpenConnectSg :: Uninstaller & Purge Utility" -ForegroundColor White
+  Write-Host " ==============================================================================" -ForegroundColor DarkGray
   Write-Host ""
 
   # Determine scope
@@ -518,12 +687,18 @@ function Do-Uninstall {
       Write-Host "  Purged OpenConnect directory: $ocRoot"
     }
     Write-Host ""
-    Write-Host "Full uninstallation completed successfully. All components were removed."
-  } else {
-    Write-Host "[3/3] Preserving OpenConnect CLI and NSSM binaries."
+    Write-Host " ==============================================================================" -ForegroundColor DarkGray
+    Write-Host "  Full uninstallation completed successfully. All components removed." -ForegroundColor Green
+    Write-Host " ==============================================================================" -ForegroundColor DarkGray
     Write-Host ""
-    Write-Host "openconnectsg uninstallation completed successfully."
-    Write-Host "OpenConnect CLI and NSSM have been preserved."
+  } else {
+    Write-Host "[3/3] Preserving OpenConnect CLI and NSSM binaries." -ForegroundColor Gray
+    Write-Host ""
+    Write-Host " ==============================================================================" -ForegroundColor DarkGray
+    Write-Host "  openconnectsg uninstallation completed successfully." -ForegroundColor Green
+    Write-Host "  OpenConnect CLI and NSSM have been preserved." -ForegroundColor White
+    Write-Host " ==============================================================================" -ForegroundColor DarkGray
+    Write-Host ""
   }
 
   return 0

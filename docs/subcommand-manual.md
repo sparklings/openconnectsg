@@ -64,30 +64,55 @@ openconnectsg <서브커맨드> [인자1] [인자2] ...
 - **실행 예시**:
   ```powershell
   > openconnectsg list
-    #   User               Server                   Alias        Status
-  * 1   user01             203.0.113.10:443         office       Running
-    2   dev_user           198.51.100.50:443        lab          Stopped
+
+   ==============================================================================
+    OpenConnectSg :: Profiles
+   ==============================================================================
+    #   DEF  USER             SERVER                     ALIAS      STATUS
+   ------------------------------------------------------------------------------
+    1    *   user01           203.0.113.10:443           office     Running
+    2        dev_user         198.51.100.50:443          lab        Stopped
+   ------------------------------------------------------------------------------
+    Default profile: openconnect_203.0.113.10_443_a1b2c3d4
+   ==============================================================================
   ```
 
 ---
 
 ### 3.2. `status` (프로필 상태 상세 확인)
 
-지정한 프로필의 서비스명, 계정, 별칭 및 현재 서비스 상태를 단일 라인으로 확인합니다.
+지정한 프로필의 서비스명, 계정, 서버, 별칭, 하트비트 수신 상태 및 최근 오류 로그를 확인합니다.
 
 - **문법**:
   ```powershell
   openconnectsg status [<profile>]
   ```
 - **인자**:
-  - `<profile>` *(선택)*: 프로필 번호, 별칭, 계정 또는 서비스명 일부. 생략 시 전체 목록(`list`)을 출력합니다.
+  - `<profile>` *(선택)*: 프로필 번호, 별칭, 계정 또는 서비스명 일부. 생략 시 기본 프로필(또는 실행 중인 프로필)을 조회합니다.
 - **실행 예시**:
   ```powershell
   > openconnectsg status 1
-  openconnect_203.0.113.10_443_a1b2c3d4  user01  office  Running
 
-  > openconnectsg status office
-  openconnect_203.0.113.10_443_a1b2c3d4  user01  office  Running
+   ==============================================================================
+    OpenConnectSg :: Profile Status
+   ==============================================================================
+
+   [Profile Details]
+     Name       : openconnect_203.0.113.10_443_a1b2c3d4
+     Index      : 1
+     Alias      : office
+     User       : user01
+     Server     : 203.0.113.10:443
+     Status     : Running
+     Default    : Yes
+
+   [Heartbeat Monitor]
+     Status     : ALIVE (4s ago, packets: 142)
+
+   [Recent Error]
+     None (Logs are clean)
+
+   ==============================================================================
   ```
 
 ---
@@ -111,13 +136,38 @@ openconnectsg <서브커맨드> [인자1] [인자2] ...
 - **실행 예시**:
   ```powershell
   > openconnectsg connect 1
-  connect openconnect_203.0.113.10_443_a1b2c3d4
-  Status: Running
+
+   ==============================================================================
+    OpenConnectSg :: Connect
+   ==============================================================================
+
+   [2/2] Starting service...
+     Target Service : openconnect_203.0.113.10_443_a1b2c3d4
+     Waiting for running status...
+     Service reached Running status.
+
+   ==============================================================================
+    Status: Running
+   ==============================================================================
 
   > openconnectsg connect 2
-  disconnect  openconnect_203.0.113.10_443_a1b2c3d4
-  connect openconnect_198.51.100.50_443_e5f6g7h8
-  Status: Running
+
+   ==============================================================================
+    OpenConnectSg :: Connect
+   ==============================================================================
+
+   [1/2] Enforcing single-tunnel policy...
+     Disconnecting other active session: openconnect_203.0.113.10_443_a1b2c3d4...
+     Conflicting sessions closed.
+
+   [2/2] Starting service...
+     Target Service : openconnect_198.51.100.50_443_e5f6g7h8
+     Waiting for running status...
+     Service reached Running status.
+
+   ==============================================================================
+    Status: Running
+   ==============================================================================
   ```
 
 ---
@@ -137,14 +187,19 @@ openconnectsg <서브커맨드> [인자1] [인자2] ...
   - `all` *(또는 인자 생략)*: 현재 실행 중인 모든 openconnect VPN 서비스를 일괄 정지.
 - **실행 예시**:
   ```powershell
-  # 특정 프로필만 연결 해제
-  > openconnectsg disconnect 1
-  disconnect  openconnect_203.0.113.10_443_a1b2c3d4
-  Status: Stopped
-
   # 전체 연결 일괄 해제
   > openconnectsg disconnect all
-  disconnect  openconnect_203.0.113.10_443_a1b2c3d4
+
+   ==============================================================================
+    OpenConnectSg :: Disconnect
+   ==============================================================================
+
+   Stopping active tunnels:
+     - openconnect_203.0.113.10_443_a1b2c3d4 ... Stopped.
+
+   ==============================================================================
+    Status: Disconnected
+   ==============================================================================
   ```
 
 ---
@@ -190,7 +245,13 @@ openconnectsg <서브커맨드> [인자1] [인자2] ...
 - **실행 예시**:
   ```powershell
   > openconnectsg alias 1 office
-  alias 'office' -> openconnect_203.0.113.10_443_a1b2c3d4
+
+   ==============================================================================
+    OpenConnectSg :: Assign Alias
+   ==============================================================================
+     Target Profile  : openconnect_203.0.113.10_443_a1b2c3d4
+     Assigned Alias  : office
+   ==============================================================================
 
   # 이후 별칭으로 바로 접속 가능
   > openconnectsg connect office
@@ -211,7 +272,13 @@ openconnectsg <서브커맨드> [인자1] [인자2] ...
 - **실행 예시**:
   ```powershell
   > openconnectsg default 2
-  default = openconnect_198.51.100.50_443_e5f6g7h8
+
+   ==============================================================================
+    OpenConnectSg :: Set Default Profile
+   ==============================================================================
+     Default Profile : openconnect_198.51.100.50_443_e5f6g7h8
+     Alias / User    : lab (dev_user)
+   ==============================================================================
   ```
 
 ---
@@ -236,9 +303,27 @@ openconnectsg <서브커맨드> [인자1] [인자2] ...
 - **실행 예시**:
   ```powershell
   > openconnectsg rm 2
-  Target: openconnect_198.51.100.50_443_e5f6g7h8 (User: dev_user)
-  This will stop the service, unregister it, and purge the profile directory. Type 'yes' to proceed: yes
-  Removed profile and service: openconnect_198.51.100.50_443_e5f6g7h8
+
+   ==============================================================================
+    OpenConnectSg :: Remove Profile
+   ==============================================================================
+
+   Target Profile:
+     Name   : openconnect_198.51.100.50_443_e5f6g7h8
+     User   : dev_user
+     Status : Stopped
+
+   This will stop the service, unregister it, and purge the profile directory.
+   Type 'yes' to proceed: yes
+
+   Removing profile and service...
+     - Service stopped
+     - Service unregistered
+     - Profile files purged
+
+   ==============================================================================
+    Profile removed successfully.
+   ==============================================================================
   ```
 
 ---
@@ -269,17 +354,27 @@ openconnectsg <서브커맨드> [인자1] [인자2] ...
 - **실행 예시**:
   ```powershell
   > openconnectsg uninstall
-  ========================================
-      openconnectsg Uninstaller
-  ========================================
 
-  Select uninstallation scope:
-    [1] openconnectsg only (Recommended)
-    [2] Full Purge
-    [q] Cancel / Abort
+   ==============================================================================
+    OpenConnectSg :: Uninstaller & Purge Utility
+   ==============================================================================
 
-  Enter your choice [1/2/q]: 1
-  Are you sure you want to proceed with uninstallation? (Type 'yes' to proceed): yes
+   Select uninstallation scope:
+     [1] openconnectsg only (Recommended)
+     [2] Full Purge
+     [q] Cancel / Abort
+
+   Enter your choice [1/2/q]: 1
+   Are you sure you want to proceed with uninstallation? (Type 'yes' to proceed): yes
+
+   [1/3] Terminating active tunnels and unregistering services...
+   [2/3] Cleaning openconnectsg profiles and System PATH...
+   [3/3] Preserving OpenConnect CLI and NSSM binaries.
+
+   ==============================================================================
+    openconnectsg uninstallation completed successfully.
+    OpenConnect CLI and NSSM have been preserved.
+   ==============================================================================
   ```
 
 ---
@@ -294,7 +389,7 @@ openconnectsg <서브커맨드> [인자1] [인자2] ...
   openconnectsg update [<source_path>]      # upgrade의 단축 별칭
   ```
 - **인자**:
-  - `<source_path>` *(선택)*: 업데이트할 Git 저장소 또는 소스 디렉터리 경로. 생략 시 기존 설치 시 기록된 소스 위치를 자동으로 참조합니다.
+  - `<source_path>` *(선택)*: 업데이트할 Git 저장소 또는 소스 디렉터리 경로. 생략 시 원격 저장소에서 직접 갱신합니다.
 - **주요 동작**:
   1. 관리자 권한을 확인하고, 일반 터미널인 경우 UAC 승격 팝업을 호출하여 안전하게 수행합니다.
   2. Git이 설치된 경우 원격 저장소(`https://github.com/sparklings/openconnectsg`)를 최신으로 클론(`git clone --depth 1`)하여 소스를 확보합니다 (`git pull`에 의존하지 않음).
@@ -313,7 +408,7 @@ openconnectsg <서브커맨드> [인자1] [인자2] ...
   \____/ .___/\___/_/ /_/\____/\____/_/ /_/_/ /_/\___/\___/\__/  /____/\__, /   
       /_/                                                             /____/    
    ==============================================================================
-    OpenConnectSg :: System Upgrade & Maintenance (v0.1.2b)
+    OpenConnectSg :: System Upgrade & Maintenance (v0.1.2c)
    ==============================================================================
 
    [Step 1/3] Fetching latest release package...
@@ -326,7 +421,7 @@ openconnectsg <서브커맨드> [인자1] [인자2] ...
    [Step 2/3] Deploying updated binaries...
 
      Target Directory  : C:\Program Files\OpenConnect\bin
-     Target Version    : openconnectsg 0.1.2b (Current: 0.1.2b)
+     Target Version    : openconnectsg 0.1.2c (Current: 0.1.2c)
      Deploying scripts...
      Core scripts updated successfully.
      Status            : Binaries deployed and profile configurations sanitized.
@@ -337,7 +432,7 @@ openconnectsg <서브커맨드> [인자1] [인자2] ...
      Service state             : Running (active)
 
    ==============================================================================
-    Upgrade completed successfully! (openconnectsg 0.1.2b)
+    Upgrade completed successfully! (openconnectsg 0.1.2c)
    ==============================================================================
   ```
 
@@ -362,10 +457,10 @@ openconnectsg <서브커맨드> [인자1] [인자2] ...
   \____/ .___/\___/_/ /_/\____/\____/_/ /_/_/ /_/\___/\___/\__/  /____/\__, /   
       /_/                                                             /____/    
    ==============================================================================
-    OpenConnectSg :: System & Version Information (v0.1.2b)
+    OpenConnectSg :: System & Version Information (v0.1.2c)
    ==============================================================================
 
-    Version       : openconnectsg 0.1.2b
+    Version       : openconnectsg 0.1.2c
     Binary Path   : C:\Program Files\OpenConnect\bin
     Profiles Path : C:\Program Files\OpenConnect\profiles
     Repository    : https://github.com/sparklings/openconnectsg

@@ -347,9 +347,11 @@ $ErrorActionPreference = 'SilentlyContinue'
 & $nssmExe start $svcName *>$null
 $ErrorActionPreference = $prevEAP
 
-Start-Sleep 5
 $statusRaw = (& $nssmExe status $svcName 2>&1 | Out-String).Trim()
-Write-Host "Service status: $statusRaw"
-Write-Host "Profile setup complete. Run 'openconnectsg' to check status."
-Write-Gap
+Write-Host ""
+Write-Host " ==============================================================================" -ForegroundColor DarkGray
+Write-Host "  Profile setup completed successfully! (Service: $statusRaw)" -ForegroundColor Green
+Write-Host "  Connect now using: openconnectsg connect" -ForegroundColor White
+Write-Host " ==============================================================================" -ForegroundColor DarkGray
+Write-Host ""
 
