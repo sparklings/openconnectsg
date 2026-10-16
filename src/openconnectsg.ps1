@@ -13,7 +13,7 @@
 $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $OutputEncoding = [System.Text.Encoding]::UTF8
-$script:Version = '0.1.2c'
+$script:Version = '0.1.2d'
 
 $ocRoot      = 'C:\Program Files\OpenConnect'
 $root        = Join-Path $ocRoot 'profiles'
@@ -704,10 +704,42 @@ function Do-Uninstall {
   return 0
 }
 
+function Compare-VersionString ($vCurrent, $vTarget) {
+  if ($vCurrent -eq $vTarget) { return 0 }
+  $pattern = '^v?(\d+)(?:\.(\d+))?(?:\.(\d+))?([a-zA-Z]?.*)$'
+  $m1 = [regex]::Match($vCurrent, $pattern)
+  $m2 = [regex]::Match($vTarget, $pattern)
+  if ($m1.Success -and $m2.Success) {
+    for ($i = 1; $i -le 3; $i++) {
+      $p1 = if ($m1.Groups[$i].Success) { [int]$m1.Groups[$i].Value } else { 0 }
+      $p2 = if ($m2.Groups[$i].Success) { [int]$m2.Groups[$i].Value } else { 0 }
+      if ($p2 -gt $p1) { return 1 }
+      if ($p2 -lt $p1) { return -1 }
+    }
+    $suf1 = if ($m1.Groups[4].Success) { $m1.Groups[4].Value } else { '' }
+    $suf2 = if ($m2.Groups[4].Success) { $m2.Groups[4].Value } else { '' }
+    if ($suf2 -gt $suf1) { return 1 }
+    if ($suf2 -lt $suf1) { return -1 }
+    return 0
+  }
+  return [string]::Compare($vTarget, $vCurrent, [System.StringComparison]::OrdinalIgnoreCase)
+}
+
 function Do-Upgrade {
-  param($token)
+  param($arg1, $arg2)
   $binDir = 'C:\Program Files\OpenConnect\bin'
   $installedFile = Join-Path $binDir '.installed'
+
+  $force = $false
+  $token = $null
+  foreach ($a in @($arg1, $arg2)) {
+    if ([string]::IsNullOrWhiteSpace($a)) { continue }
+    if ($a -match '^(-f|--force|/f)$') {
+      $force = $true
+    } elseif (-not $token) {
+      $token = $a
+    }
+  }
 
   $wp = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
   $isAdmin = $wp.IsInRole([System.Security.Principal.WindowsBuiltInRole]::Administrator)
@@ -722,6 +754,7 @@ function Do-Upgrade {
     }
     $argStr = "-NoProfile -ExecutionPolicy Bypass -Command `"& '$selfPath' upgrade"
     if (-not [string]::IsNullOrWhiteSpace($token)) { $argStr += " '$token'" }
+    if ($force) { $argStr += " --force" }
     $argStr += "; Write-Host ''; Read-Host 'Press Enter to close this window...'`""
 
     try {
@@ -840,6 +873,23 @@ function Do-Upgrade {
     Write-Host ""
     Write-Host "   Target Directory  : $binDir" -ForegroundColor White
     Write-Host "   Target Version    : openconnectsg $newVer (Current: $script:Version)" -ForegroundColor White
+
+    $cmp = Compare-VersionString $script:Version $newVer
+    if ($cmp -le 0 -and -not $force) {
+      Write-Host "   Status            : Already up to date. No upgrade required." -ForegroundColor Green
+      Write-Host ""
+      Write-Host " ==============================================================================" -ForegroundColor DarkGray
+      Write-Host "  Already up to date! (openconnectsg $script:Version)" -ForegroundColor Green
+      Write-Host "  No changes were made to binaries or active background services." -ForegroundColor White
+      Write-Host " ==============================================================================" -ForegroundColor DarkGray
+      Write-Host ""
+      return 0
+    }
+
+    if ($force -and $cmp -le 0) {
+      Write-Host "   Notice            : Force flag specified. Reinstalling version $newVer..." -ForegroundColor Yellow
+    }
+
     Write-Host "   Deploying scripts..." -ForegroundColor Gray
 
     Copy-Item $srcPs1 $binDir -Force
@@ -1053,7 +1103,7 @@ Usage:
   openconnectsg alias <profile> <alias>   Assign friendly alias to profile
   openconnectsg default <profile>         Set default profile
   openconnectsg remove <profile>          Remove profile and unregister Windows service
-  openconnectsg upgrade [<source>]        Upgrade openconnectsg system binaries to latest version
+  openconnectsg upgrade [<source>] [--force] Upgrade openconnectsg system binaries (skip if current)
   openconnectsg uninstall [<scope>]       Uninstall openconnectsg (scope: app or full)
   openconnectsg version                   Display tool version and system details
   openconnectsg banner                    Display welcome ASCII banner
@@ -1095,8 +1145,8 @@ try {
     'remove'       { $exitCode = Do-Remove     (Get-Profiles) $a1 }
     'rm'           { $exitCode = Do-Remove     (Get-Profiles) $a1 }
     'delete'       { $exitCode = Do-Remove     (Get-Profiles) $a1 }
-    'upgrade'      { $exitCode = Do-Upgrade    $a1 }
-    'update'       { $exitCode = Do-Upgrade    $a1 }
+    'upgrade'      { $exitCode = Do-Upgrade    $a1 $a2 }
+    'update'       { $exitCode = Do-Upgrade    $a1 $a2 }
     'uninstall'    { $exitCode = Do-Uninstall  $a1 }
     'un'           { $exitCode = Do-Uninstall  $a1 }
     'purge'        { $exitCode = Do-Uninstall  $a1 }

@@ -103,7 +103,7 @@ openconnectsg disconnect all       # 모든 활성 VPN 연결 해제
 | `openconnectsg remove <p>` | `rm`, `delete` | 프로필 구성 삭제 및 Windows 서비스 영구 등록 해제 |
 | `openconnectsg upgrade [<p>]` | `update` | 최신 소스로 바이너리 업그레이드 및 서비스 재시작 |
 | `openconnectsg uninstall [<s\>]` | `un`, `purge` | 도구 제거 (범위: `app` 앱 전용 삭제, `full` 전체 완전 삭제) |
-| `openconnectsg version` | `-v` | 현재 버전 및 시스템 정보 출력 (`0.1.2c`) |
+| `openconnectsg version` | `-v` | 현재 버전 및 시스템 정보 출력 (`0.1.2d`) |
 | `openconnectsg banner` | - | 웰컴 Slant ASCII Figlet 배너 출력 |
 | `openconnectsg help` | `-h` | CLI 도움말 및 배너 출력 |
 
@@ -113,6 +113,11 @@ openconnectsg disconnect all       # 모든 활성 VPN 연결 해제
 
 ## 🚀 릴리스 및 변경 관리 (Release Notes)
 
+- **v0.1.2d (2026-10-16)**:
+  - **업그레이드 버전 검증 및 무중단 보호**: `openconnectsg upgrade` 실행 시 현재 설치 버전과 최신 버전을 비교하여 이미 최신인 경우 배포 및 서비스 재시작을 건너뛰어 활성 VPN 세션을 안전하게 유지.
+  - **강제 재배포 옵션 지원**: 동일 버전이라도 바이너리 재배포가 필요한 경우를 위해 `--force` (`-f`) 옵션 추가.
+  - **시맨틱 버전 비교 탑재**: `Compare-VersionString` 함수를 통해 메이저/마이너/패치 및 서픽스 기반의 정밀 버전 비교 수행.
+  - **프로젝트 명칭 규약 확립**: 공식 명칭 `OpenConnectSg` (g는 소문자) 및 CLI 식별자 `openconnectsg` 준수 확인.
 - **v0.1.2c (2026-10-15)**:
   - **TUI 디자인 일원화**: `list`, `status`, `connect`, `disconnect`, `remove`, `alias`, `default`, `uninstall` 전반에 박스 라인 규격(`====`, `----`)과 단계별 여백 적용.
   - **영문 인터페이스 표준화**: 진행 상태 및 오류 안내 메시지를 영문으로 정돈하고 터미널 경고 억제.

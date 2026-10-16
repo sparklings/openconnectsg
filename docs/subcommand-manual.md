@@ -381,23 +381,23 @@ openconnectsg <서브커맨드> [인자1] [인자2] ...
 
 ### 3.10. `upgrade` / `update` (시스템 업그레이드)
 
-설치된 `openconnectsg` 바이너리를 최신 버전으로 갱신하고, 실행 중인 터널 서비스를 자동으로 재시작합니다.
+설치된 `openconnectsg` 바이너리를 최신 버전으로 갱신하고, 변경 사항이 있을 경우 실행 중인 터널 서비스를 동기화합니다. 이미 최신 버전인 경우 터널 중단 없이 업그레이드를 건너뜁니다.
 
 - **문법**:
   ```powershell
-  openconnectsg upgrade [<source_path>]
-  openconnectsg update [<source_path>]      # upgrade의 단축 별칭
+  openconnectsg upgrade [<source_path>] [--force]
+  openconnectsg update [<source_path>] [--force]    # upgrade의 단축 별칭
   ```
-- **인자**:
-  - `<source_path>` *(선택)*: 업데이트할 Git 저장소 또는 소스 디렉터리 경로. 생략 시 원격 저장소에서 직접 갱신합니다.
+- **인자 및 옵션**:
+  - `<source_path>` *(선택)*: 업데이트할 Git 저장소 또는 소스 디렉터리 경로. 생략 시 원격 저장소(`https://github.com/sparklings/openconnectsg`)에서 직접 갱신합니다.
+  - `--force`, `-f` *(선택)*: 최신 버전이 이미 설치되어 있어도 바이너리를 강제로 재배포하고 서비스를 재시작합니다.
 - **주요 동작**:
   1. 관리자 권한을 확인하고, 일반 터미널인 경우 UAC 승격 팝업을 호출하여 안전하게 수행합니다.
-  2. Git이 설치된 경우 원격 저장소(`https://github.com/sparklings/openconnectsg`)를 최신으로 클론(`git clone --depth 1`)하여 소스를 확보합니다 (`git pull`에 의존하지 않음).
-  3. Git 또는 개발 도구가 없는 일반 PC인 경우, GitHub HTTPS 아카이브(ZIP)를 자동 다운로드 및 압축 해제하여 순수 PowerShell 환경에서도 완벽히 업그레이드합니다.
-  4. 바이너리(`openconnectsg.ps1`, `openconnectsg.cmd` 등)를 `C:\Program Files\OpenConnect\bin`으로 재배포합니다.
-  5. 비대해진 레거시 하트비트 로그가 남아있을 경우 `err.log`를 자동 정리합니다.
-  6. 활성 서비스가 실행 중이면 새 스크립트가 적용되도록 서비스를 안전하게 재시작합니다.
-- **실행 예시**:
+  2. Git이 설치된 경우 원격 저장소를 최신으로 클론(`git clone --depth 1`)하여 소스를 확보합니다.
+  3. Git이 없는 일반 PC인 경우, GitHub HTTPS 아카이브(ZIP)를 자동 다운로드 및 압축 해제합니다.
+  4. **버전 비교 및 무중단 보호**: 설치된 버전과 대상 버전이 동일하면 파일 배포 및 서비스 재시작을 건너뛰어 활성 VPN 연결이 끊어지지 않도록 보호합니다.
+  5. 새 버전이 감지되거나 `--force`가 지정된 경우 바이너리를 `C:\Program Files\OpenConnect\bin`으로 재배포하고 활성 서비스를 안전하게 재시작합니다.
+- **실행 예시 (이미 최신 버전인 경우)**:
   ```powershell
   > openconnectsg upgrade
 
@@ -408,7 +408,7 @@ openconnectsg <서브커맨드> [인자1] [인자2] ...
   \____/ .___/\___/_/ /_/\____/\____/_/ /_/_/ /_/\___/\___/\__/  /____/\__, /   
       /_/                                                             /____/    
    ==============================================================================
-    OpenConnectSg :: System Upgrade & Maintenance (v0.1.2c)
+    OpenConnectSg :: System Upgrade & Maintenance (v0.1.2d)
    ==============================================================================
 
    [Step 1/3] Fetching latest release package...
@@ -421,18 +421,12 @@ openconnectsg <서브커맨드> [인자1] [인자2] ...
    [Step 2/3] Deploying updated binaries...
 
      Target Directory  : C:\Program Files\OpenConnect\bin
-     Target Version    : openconnectsg 0.1.2c (Current: 0.1.2c)
-     Deploying scripts...
-     Core scripts updated successfully.
-     Status            : Binaries deployed and profile configurations sanitized.
-
-   [Step 3/3] Synchronizing background services...
-
-     Restarting active service : openconnect_203.231.7.150_10443_103995b4...
-     Service state             : Running (active)
+     Target Version    : openconnectsg 0.1.2d (Current: 0.1.2d)
+     Status            : Already up to date. No upgrade required.
 
    ==============================================================================
-    Upgrade completed successfully! (openconnectsg 0.1.2c)
+    Already up to date! (openconnectsg 0.1.2d)
+    No changes were made to binaries or active background services.
    ==============================================================================
   ```
 
@@ -457,10 +451,10 @@ openconnectsg <서브커맨드> [인자1] [인자2] ...
   \____/ .___/\___/_/ /_/\____/\____/_/ /_/_/ /_/\___/\___/\__/  /____/\__, /   
       /_/                                                             /____/    
    ==============================================================================
-    OpenConnectSg :: System & Version Information (v0.1.2c)
+    OpenConnectSg :: System & Version Information (v0.1.2d)
    ==============================================================================
 
-    Version       : openconnectsg 0.1.2c
+    Version       : openconnectsg 0.1.2d
     Binary Path   : C:\Program Files\OpenConnect\bin
     Profiles Path : C:\Program Files\OpenConnect\profiles
     Repository    : https://github.com/sparklings/openconnectsg
