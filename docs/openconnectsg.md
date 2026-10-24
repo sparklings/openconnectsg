@@ -7,6 +7,7 @@
 > - **[CLI 서브커맨드 전체 레퍼런스](subcommand-manual.md)**
 > - **[배포 및 설치 가이드](install-guide.md)**
 > - **[보안 및 자격 증명(DPAPI) 명세](security-credentials.md)**
+> - **[Windows DPAPI 심층 기술 가이드](dpapi-technical-guide.md)**
 > - **[장애 진단 및 트러블슈팅](troubleshooting.md)**
 > - **[버전별 변경 이력 (Changelog)](../CHANGELOG.md)**
 

@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Modularized Engineering Documentation**:
   - [`docs/architecture.md`](docs/architecture.md): Core system architecture, daemon lifecycle, and Wintun tunnel orchestration.
   - [`docs/security-credentials.md`](docs/security-credentials.md): DPAPI LocalMachine encryption, ACL locking, and RFC 7469 pinning specifications.
+  - [`docs/dpapi-technical-guide.md`](docs/dpapi-technical-guide.md): Comprehensive technical report and reference covering Windows DPAPI architecture, internal key derivation, scope comparisons (`CurrentUser` vs `LocalMachine`), and NTFS ACL hardening.
   - [`docs/troubleshooting.md`](docs/troubleshooting.md): In-depth diagnostic workflows, log inspection guides, and error recovery procedures.
 - **Version Verification in Upgrade (`Compare-VersionString`)**: `openconnectsg upgrade` compares the installed version with the target version before proceeding. If already up to date, it skips re-deployment and service restart to preserve active VPN sessions.
 - **Force Upgrade Flag (`--force`, `-f`)**: Added `-f` / `--force` option to `openconnectsg upgrade` to allow re-deploying identical versions when necessary.

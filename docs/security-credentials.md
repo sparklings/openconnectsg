@@ -17,7 +17,7 @@ OpenConnectSg는 사용자가 매번 비밀번호를 수동 입력하거나, 일
 
 ## 2. Credential Encryption: Windows DPAPI
 
-비밀번호는 Windows Data Protection API (DPAPI)의 **`LocalMachine`** 스코프를 통해 암호화되어 바이너리 형태(`pw.bin`)로 저장됩니다.
+비밀번호는 Windows Data Protection API (DPAPI)의 **`LocalMachine`** 스코프를 통해 암호화되어 바이너리 형태(`pw.bin`)로 저장됩니다. DPAPI의 내부 키 도출 메커니즘, LSA 통합 및 아키텍처에 대한 상세 내용은 [DPAPI 심층 기술 가이드](dpapi-technical-guide.md)를 참조하십시오.
 
 ### Encryption and Decryption Mechanism
 
