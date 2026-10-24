@@ -20,7 +20,7 @@
 
 ## 2. Windows DPAPI Architecture & Mechanisms
 
-### 2.1 DPAPI 정의
+### 2.1 DPAPI Definition & Principles
 **DPAPI (Data Protection Application Programming Interface)** 는 Windows 2000부터 도입되어 Windows 11 및 Windows Server 2025에 이르기까지 검증된 Windows 네이티브 대칭 키 암호화 서브시스템입니다.
 
 DPAPI의 가장 큰 공학적 가치는 **키 관리(Key Management)의 운영체제 위임** 에 있습니다:
@@ -63,7 +63,7 @@ flowchart TD
 | **동일 머신 타인 접근** | 타 사용자는 관리자라 하더라도 직접 복호화 불가 | 동일 PC의 관리자 권한 프로세스는 복호화 가능 |
 | **보안 보완책 필요성** | 기본 OS 사용자 분리로 충족 | **NTFS ACL (icacls) 엄격 제한 필수** |
 
-### 3.1 왜 OpenConnectSg는 `LocalMachine`을 채택했는가?
+### 3.1 Engineering Rationale for LocalMachine Scope
 OpenConnectSg는 **NSSM (Non-Sucking Service Manager)** 을 통해 시스템 부팅 시 사용자가 데스크톱에 로그인하지 않아도 VPN 백그라운드 서비스를 자동 시작(`StartType: Automatic`)할 수 있어야 합니다.
 
 * 만약 `CurrentUser` 스코프를 사용하면:
@@ -77,7 +77,7 @@ OpenConnectSg는 **NSSM (Non-Sucking Service Manager)** 을 통해 시스템 부
 
 `LocalMachine` 스코프는 동일 PC 내의 다른 프로세스에 의한 복호화 가능성이 열려 있다는 본질적 특성을 가집니다. **OpenConnectSg** 는 이를 방어하기 위해 **NTFS ACL (Access Control List) 상속 제거 및 최소 권한 고정** 을 2차 방벽으로 결합했습니다. (자세한 NTFS 보안 모델 및 Well-Known SID 하드닝 명세는 [Windows icacls 기술 가이드](icacls-technical-guide.md)를 참조하십시오.)
 
-### 4.1 권한 격리 구현 명세
+### 4.1 Permission Isolation Specification
 비밀번호 암호화 바이너리(`pw.bin`)가 생성되는 즉시, [init-openconnectsg.ps1](file:///c:/Users/SUNGWON/OneDrive/OpenConnectSg/src/init-openconnectsg.ps1)은 Windows 네이티브 `icacls.exe` 엔진을 직접 호출하여 모든 권한 상속을 차단하고 허용 계정을 2개로 강제 격리합니다:
 
 ```powershell
@@ -91,7 +91,7 @@ OpenConnectSg는 **NSSM (Non-Sucking Service Manager)** 을 통해 시스템 부
 & icacls "$pwBinPath" /grant:r "*S-1-5-32-544:(F)"
 ```
 
-### 4.2 방어 효과
+### 4.2 Threat Mitigation & Defense Impact
 * **표준 사용자(Standard Users) 차단**: 사내 공용 PC나 다중 사용자 환경에서 일반 사용자가 `pw.bin` 파일을 읽거나 복사하려 시도하면 `0x5 (Access Denied)` 오류로 원천 차단됩니다.
 * **악성 소프트웨어 및 랜섬웨어 격리**: 일반 사용자 권한으로 침투한 악성코드가 `pw.bin`을 복호화 시도조차 할 수 없습니다.
 * **외부 유출 무력화**: 물리 드라이브를 복제하여 다른 PC나 Linux 환경에서 마운트하더라도, 대상 머신의 DPAPI 마스터 키(LSA Secret)가 없으므로 파일 복호화가 암호학적으로 불가능합니다.
@@ -100,7 +100,7 @@ OpenConnectSg는 **NSSM (Non-Sucking Service Manager)** 을 통해 시스템 부
 
 ## 5. Source Code Implementation Analysis
 
-### 5.1 암호화 파이프라인 ([src/init-openconnectsg.ps1](file:///c:/Users/SUNGWON/OneDrive/OpenConnectSg/src/init-openconnectsg.ps1))
+### 5.1 Encryption Pipeline (src/init-openconnectsg.ps1)
 프로필 등록 마법사(`init-openconnectsg.ps1`) 실행 시 사용자 입력을 바이트 배열로 변환하고 메모리 상에서 즉각 DPAPI 암호화를 수행합니다.
 
 ```powershell
@@ -124,7 +124,7 @@ $bytes = $null
 [System.GC]::Collect()
 ```
 
-### 5.2 복호화 및 프로세스 파이프 주입 ([src/openconnectsg.ps1](file:///c:/Users/SUNGWON/OneDrive/OpenConnectSg/src/openconnectsg.ps1))
+### 5.2 Decryption & Stdin Process Streaming (src/openconnectsg.ps1)
 VPN 데몬이 실행될 때(`service-run` 또는 `connect`), 디스크에 평문 파일을 일절 생성하지 않고 **오직 메모리 스트림 상에서만 복호화한 뒤 `openconnect.exe`의 표준 입력(`stdin`)으로 직접 밀어 넣습니다**.
 
 ```powershell
@@ -169,7 +169,7 @@ $encrypted = $null
 
 ## 7. Operational & Troubleshooting Guide
 
-### 7.1 가상 머신(VM) 복제 및 Sysprep 환경 주의사항
+### 7.1 Virtual Machine Cloning & Sysprep Caveats
 * **현상**: VMWare, Hyper-V, VirtualBox 등에서 Golden Image를 복제(Clone)하거나 `sysprep`을 실행한 경우, 새 머신에서 `openconnectsg connect` 실행 시 `CryptUnprotectData` 예외가 발생할 수 있습니다.
 * **원인**: Windows SID가 재생성되거나 LSA Machine Secret이 초기화되면서 기존 머신 키와 불일치가 발생하기 때문입니다.
 * **해결책**:
@@ -179,7 +179,7 @@ $encrypted = $null
   ```
   단 한 번의 재초기화 마법사 수행으로 새 머신의 DPAPI 키로 즉시 재암호화됩니다.
 
-### 7.2 자격 증명 무결성 검증 명령어
+### 7.2 Credential Integrity Verification Commands
 관리자는 다음 검증 명령어를 PowerShell 콘솔에 입력하여 `pw.bin` 의 암호화 상태와 ACL 보호 상태를 언제든지 검증할 수 있습니다:
 
 ```powershell
