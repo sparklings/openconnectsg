@@ -1,4 +1,5 @@
 # Windows icacls.exe Engine & NTFS ACL Hardening Technical Guide
+### 자격 증명 접근 제어 및 Well-Known SID 보안 하드닝
 
 본 기술 문서는 **OpenConnectSg** 에서 VPN 접속 자격 증명(`pw.bin`) 및 민감한 프로필 구성을 보호하기 위해 채택한 **Windows 네이티브 `icacls.exe` 엔진과 NTFS 접근 제어 목록(Access Control List, ACL)** 의 내부 보안 아키텍처, 권한 상속 제어, 그리고 언어 독립적 Well-Known SID 하드닝 명세를 기술합니다.
 
