@@ -62,7 +62,7 @@ $sw.Flush()
 
 ## 3. File System Access Control (ACL Locking)
 
-`LocalMachine` 스코프로 암호화된 파일은 동일 PC의 다른 관리자 권한 프로세스에서도 이론적으로 복호화가 가능하므로, **파일 시스템 권한을 엄격히 제한** 합니다.
+`LocalMachine` 스코프로 암호화된 파일은 동일 PC의 다른 관리자 권한 프로세스에서도 이론적으로 복호화가 가능하므로, **파일 시스템 권한을 엄격히 제한** 합니다. 상세한 NTFS ACL 메커니즘 및 파라미터는 [Windows icacls 기술 가이드](icacls-technical-guide.md)를 참조하십시오.
 
 `init-openconnectsg.ps1`는 `pw.bin` 생성 즉시 Windows `icacls.exe`를 호출하여 상속 권한을 제거하고 허용 대상을 제한합니다:
 
