@@ -179,7 +179,7 @@ $encrypted = $null
   단 한 번의 재초기화 마법사 수행으로 새 머신의 DPAPI 키로 즉시 재암호화됩니다.
 
 ### 7.2 자격 증명 무결성 검증 명령어
-관리자는 다음 원라이너를 통해 `pw.bin`의 암호화 상태와 ACL 보호 상태를 언제든지 검증할 수 있습니다:
+관리자는 다음 검증 명령어를 PowerShell 콘솔에 입력하여 `pw.bin` 의 암호화 상태와 ACL 보호 상태를 언제든지 검증할 수 있습니다:
 
 ```powershell
 # ACL 권한 검증 (SYSTEM과 Administrators만 존재하는지 확인)
