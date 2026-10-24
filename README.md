@@ -1,66 +1,43 @@
 # OpenConnectSg
 
-> 프로젝트명은 **OpenConnectSg**로 정의하며, 실행 명령·스크립트 소스코드·문서 및 내부 식별자는 모두 소문자 `openconnectsg`로 표기합니다.
+> 프로젝트 공식 명칭은 **OpenConnectSg**로 정의하며, 실행 명령·스크립트 소스코드·문서 및 내부 식별자는 모두 소문자 `openconnectsg`로 표기합니다.
 
-Windows 환경에서 `openconnect.exe` CLI 도구를 사용할 때, 반복되는 수작업(매번 비밀번호 입력, 콘솔 창 유지, 다중 접속 관리)을 줄이기 위해 작성된 PowerShell 기반 자동화 도구입니다.
+Windows 환경에서 `openconnect.exe` CLI 도구를 사용할 때 발생하는 반복적인 수작업(매번 비밀번호 입력, 콘솔 창 유지, 다중 접속 관리, 재부팅 시 수동 재연결)을 제거하기 위한 PowerShell 기반 백그라운드 서비스 자동화 도구입니다.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Platform: Windows](https://img.shields.io/badge/Platform-Windows%2010%2F11%2FServer-blue.svg)]()
 [![Shell: PowerShell 5.1+](https://img.shields.io/badge/PowerShell-5.1%2B-blue.svg)]()
+[![Version: v0.1.2d](https://img.shields.io/badge/Version-v0.1.2d-green.svg)](CHANGELOG.md)
 
 ---
 
-## 📌 프로젝트 소개 및 역할
+## 📌 핵심 기능
 
-`openconnectsg`는 독립적인 VPN 클라이언트가 아닙니다. Windows 환경에서 공식 [OpenConnect](https://www.infradead.org/openconnect/)(`openconnect.exe`) CLI 도구를 백그라운드 Windows 서비스로 구동하고 프로필 관리를 보조하기 위해 작성된 **PowerShell 래퍼(Wrapper) 스크립트**입니다.
-
-실제 VPN 터널링 및 모든 네트워크 패킷 처리는 시스템에 설치된 `openconnect.exe`가 전담하며, `openconnectsg`는 다음과 같은 로컬 편의 기능만을 수행합니다:
-
-- **백그라운드 서비스 구동 보조**: NSSM 2.24와 연계하여 터미널 창을 띄워두지 않고 백그라운드 Windows 서비스로 `openconnect.exe`를 실행합니다.
-- **DPAPI 비밀번호 암호화 보관**: 매 접속 시 비밀번호를 수동 입력하거나 평문 배치 파일에 적어두지 않도록, Windows DPAPI(`LocalMachine` 스코프)로 암호화하여 로컬 디스크에 보관한 뒤 서비스 기동 시 안전하게 전달합니다.
-- **프로필 기반 CLI 관리**: 서버 주소, 포트, 사용자 계정을 프로필별 디렉터리로 관리하며, `connect`, `disconnect`, `alias`, `status` 명령어로 간편하게 제어합니다.
-- **Wintun 기반 초고속 가상 터널**: Wintun 드라이버와 공식 `vpnc-script-win.js`를 통해 Windows 커널 수준에서 안정적인 고성능 터널 어댑터를 자동 생성합니다.
-- **.NET 기반 무결성 표준 입력(stdin) 스트리밍**: 백그라운드 서비스 환경에서도 복호화된 비밀번호가 왜곡 없이 `openconnect.exe`로 전달되도록 .NET 전용 UTF-8 프로세스 스트림을 사용합니다.
-- **자체서명 인증서 지문 고정**: 자체서명 인증서 환경에서 최초 셋업 시 RFC 7469 `pin-sha256` 지문을 확인하여 설정 파일에 저장합니다.
-- **클린 삭제 및 초기화(`uninstall`)**: 도구만 삭제(`app`)하거나 외부 의존성(NSSM, OpenConnect CLI)까지 시스템 전체에서 말끔히 정리(`full`)하는 언인스톨러를 내장했습니다.
+* **백그라운드 무중단 데몬**: NSSM 2.24와 결합하여 터미널 창을 띄우지 않고 Windows 서비스로 구동하며, OS 부팅 시 자동 연결.
+* **DPAPI 비밀번호 암호화 보관**: Windows DPAPI(`LocalMachine`)를 통해 암호를 `pw.bin`에 암호화 저장하고 `icacls`로 접근을 통제.
+* **Wintun 커널 터널링**: WireGuard Wintun 고속 가상 인터페이스와 `vpnc-script-win.js`를 통한 안정적인 Split Routing 구성.
+* **단일 터널 보장 및 TUI 통합**: 전역 뮤텍스로 세션 충돌을 원천 방지하며, 80컬럼 표준 TUI 및 버전 검증 업그레이드 지원.
 
 ---
 
-## 📋 시스템 요구 사항 (Prerequisites)
+## 📚 개발산출물 및 문서 인덱스 (Documentation Hub)
 
-- **OS**: Windows 10, Windows 11 (x64) 또는 Windows Server 2016 이상
-- **셸 환경**: Windows PowerShell 5.1 이상 (관리자 권한 필수)
-- **네트워크**: 초기 설치 시 의존성 바이너리 다운로드를 위한 인터넷 연결
+본 프로젝트는 산출물 및 기능별로 세분화된 전용 문서를 제공합니다. 상세 내용은 아래 개별 문서를 참조하십시오:
 
----
-
-## 📂 저장소 구조 (Repository Structure)
-
-```
-openconnectsg/
-├── .github/                  # GitHub 워크플로 및 이슈 템플릿
-├── docs/
-│   ├── subcommand-manual.md  # 서브커맨드 및 별칭 전체 레퍼런스 메뉴얼
-│   ├── install-guide.md      # 온라인/오프라인 환경별 배포 가이드
-│   └── openconnectsg.md      # 시스템 아키텍처 및 내부 원리 상세 문서
-├── install/
-│   └── install-openconnectsg.ps1 # 자동 배포 및 시스템 PATH 등록 프로그램
-├── src/
-│   ├── openconnectsg.ps1     # 메인 CLI 디스패처 및 통합 서비스 데몬 러너
-│   ├── openconnectsg.cmd     # 시스템 PATH 등록용 실행 셔틀
-│   └── init-openconnectsg.ps1 # 프로필 설정 마법사 및 무결성 검증기
-├── .gitattributes            # CRLF 라인 엔딩 규칙
-├── .gitignore                # 기밀(pw.bin) 및 로그 커밋 차단
-├── LICENSE                   # MIT License
-├── llms.txt                  # LLM 및 AI 에이전트 전용 아키텍처 명세
-└── README.md                 # 프로젝트 개요 및 빠른 시작 가이드
-```
+| 기능 / 도메인 | 대상 산출물 파일 | 주요 내용 및 링크 |
+| :--- | :--- | :--- |
+| **시스템 아키텍처** | `src/openconnectsg.ps1` | [시스템 구조 및 코어 설계](docs/architecture.md)<br>통합 데몬 러너, Wintun 터널 메커니즘, 프로세스 수명주기 |
+| **설치 및 배포** | `install/install-openconnectsg.ps1` | [배포 및 설치 가이드](docs/install-guide.md)<br>온라인/오프라인 환경별 배포 절차, 환경변수(PATH) 및 시스템 요구사항 |
+| **CLI 커맨드 레퍼런스** | `src/openconnectsg.cmd` | [서브커맨드 전체 매뉴얼](docs/subcommand-manual.md)<br>13개 서브커맨드 명세, 단축 별칭, 파라미터 및 TUI 출력 규격 |
+| **보안 및 자격 증명** | `src/init-openconnectsg.ps1`<br>`pw.bin`, `pin.txt` | [보안 및 자격 증명 관리](docs/security-credentials.md)<br>DPAPI LocalMachine 암호화, icacls 권한 잠금, pin-sha256 지문 고정 |
+| **장애 진단 및 트러블슈팅** | `profiles/<service>/logs/*` | [장애 진단 및 문제 해결 가이드](docs/troubleshooting.md)<br>로그 분석법, Wintun 어댑터 0x102 타임아웃 해결, 계정 잠금 대응 |
+| **버전 및 변경 이력** | 전체 프로젝트 리포지토리 | [변경 이력 (CHANGELOG.md)](CHANGELOG.md)<br>버전별(v0.1.0 ~ v0.1.2d) 추가/수정/보안 패치 및 산출물 추적 |
 
 ---
 
 ## ⚡ 빠른 시작 (Quick Start)
 
-### 1) 저장소 다운로드 및 시스템 설치
+### 1) 저장소 복제 및 시스템 설치
 관리자 권한 PowerShell에서 1회 실행합니다:
 
 ```powershell
@@ -89,7 +66,7 @@ openconnectsg disconnect all       # 모든 활성 VPN 연결 해제
 
 ---
 
-## 📖 CLI 명령어 요약 (Subcommand Reference)
+## 📖 CLI 명령어 요약 (Quick Command Reference)
 
 | 명령어 | 단축 별칭 | 설명 |
 |---|---|---|
@@ -101,88 +78,44 @@ openconnectsg disconnect all       # 모든 활성 VPN 연결 해제
 | `openconnectsg alias <p> <별칭>` | `label` | 프로필에 호출용 별칭 부여 |
 | `openconnectsg default <p>` | - | 기본 접속 대상 프로필 포인터 지정 |
 | `openconnectsg remove <p>` | `rm`, `delete` | 프로필 구성 삭제 및 Windows 서비스 영구 등록 해제 |
-| `openconnectsg upgrade [<p>]` | `update` | 최신 소스로 바이너리 업그레이드 및 서비스 재시작 |
+| `openconnectsg upgrade [<p>]` | `update` | 최신 소스로 바이너리 업그레이드 및 버전 검증 (`--force` 지원) |
 | `openconnectsg uninstall [<s\>]` | `un`, `purge` | 도구 제거 (범위: `app` 앱 전용 삭제, `full` 전체 완전 삭제) |
 | `openconnectsg version` | `-v` | 현재 버전 및 시스템 정보 출력 (`0.1.2d`) |
 | `openconnectsg banner` | - | 웰컴 Slant ASCII Figlet 배너 출력 |
 | `openconnectsg help` | `-h` | CLI 도움말 및 배너 출력 |
 
-자세한 사용법은 [서브커맨드 메뉴얼](docs/subcommand-manual.md)을 참조하십시오.
+> 각 명령어의 상세 옵션 및 TUI 출력 화면은 [서브커맨드 전체 매뉴얼](docs/subcommand-manual.md)을 참조하십시오.
 
 ---
 
-## 🚀 릴리스 및 변경 관리 (Release Notes)
+## 🚀 최신 릴리스 정보 (v0.1.2d)
 
-- **v0.1.2d (2026-10-16)**:
-  - **업그레이드 버전 검증 및 무중단 보호**: `openconnectsg upgrade` 실행 시 현재 설치 버전과 최신 버전을 비교하여 이미 최신인 경우 배포 및 서비스 재시작을 건너뛰어 활성 VPN 세션을 안전하게 유지.
-  - **강제 재배포 옵션 지원**: 동일 버전이라도 바이너리 재배포가 필요한 경우를 위해 `--force` (`-f`) 옵션 추가.
-  - **시맨틱 버전 비교 탑재**: `Compare-VersionString` 함수를 통해 메이저/마이너/패치 및 서픽스 기반의 정밀 버전 비교 수행.
-  - **프로젝트 명칭 규약 확립**: 공식 명칭 `OpenConnectSg` (g는 소문자) 및 CLI 식별자 `openconnectsg` 준수 확인.
-- **v0.1.2c (2026-10-15)**:
-  - **TUI 디자인 일원화**: `list`, `status`, `connect`, `disconnect`, `remove`, `alias`, `default`, `uninstall` 전반에 박스 라인 규격(`====`, `----`)과 단계별 여백 적용.
-  - **영문 인터페이스 표준화**: 진행 상태 및 오류 안내 메시지를 영문으로 정돈하고 터미널 경고 억제.
-  - **연결 실패 진단 출력**: 연결 실패 시 원인 분석 및 로그 경로를 안내하는 진단 블록 추가.
-  - **문서 동기화**: `subcommand-manual.md`, `install-guide.md`, `openconnectsg.md` 내용 및 버전(`0.1.2c`) 반영.
-- **v0.1.2b (2026-10-14)**:
-  - **초기 설치 화면 고도화**: `install-openconnectsg.ps1` 실행 완료 시 Slant ASCII Figlet 아트 기반의 세련된 터미널 Welcome Banner 출력.
-  - **환경 및 의존성 브리핑**: 설치 대상 경로(`DEPLOY`), 시스템 환경변수(`PATH`), 필수 패키지(`OpenConnect CLI`, `NSSM`) 및 핵심 아키텍처(`DPAPI Encrypted Credential`, `Wintun Kernel Adapter`)를 명확히 안내.
-  - **직관적인 Quick Start 가이드**: 터미널 환경 새로고침 및 첫 `setup` 실행 안내를 컬러 콘솔 뷰로 제공.
-  - **문서화 및 변경 관리 동기화**: `install-guide.md`, `openconnectsg.md`, `CITATION.cff`, `llms-full.txt` 버전 `v0.1.2b` 일원화.
-- **v0.1.2a (2026-10-13)**:
-  - 언인스톨러 스코프(`app`/`full`) 분리, 다중 프로필 관리 및 LLM 명세 체계화.
-- **v0.1.1b (2026-10-11)**:
-  - DPAPI 암호화 및 NSSM 서비스 데몬 오케스트레이션 최초 통합.
+* **업그레이드 버전 검증 및 무중단 보호**: `openconnectsg upgrade` 실행 시 현재 설치 버전과 최신 버전을 비교하여 동일한 경우 배포 및 서비스 재시작을 건너뛰어 활성 VPN 세션을 보호합니다.
+* **강제 재배포 옵션 (`--force`)**: 동일 버전이라도 바이너리 재배포가 필요한 경우 강제 업그레이드를 지원합니다.
+* **TUI 일원화 및 안정화**: 전체 서브커맨드에 80컬럼 박스 규격과 진단 실패 블록을 적용했습니다.
+
+전체 버전별 세부 변경 사항은 [CHANGELOG.md](CHANGELOG.md)에서 확인하실 수 있습니다.
 
 ---
 
-## ❓ 자주 묻는 질문 (FAQ)
-
-### Q1. 시스템 재부팅 후에도 자동으로 VPN이 연결되나요?
-네. Windows 서비스 등록 시 `SERVICE_AUTO_START`로 구성되어 있으므로, 사용자가 윈도우에 로그인하지 않은 상태에서도 OS 부팅과 동시에 백그라운드 터널이 형성됩니다.
-
-### Q2. 비밀번호를 변경하려면 어떻게 해야 하나요?
-`openconnectsg setup`을 다시 실행하여 동일한 서버 주소와 계정으로 새 비밀번호를 입력하면, 기존 서비스와 `pw.bin`이 최신 암호로 자동 갱신됩니다.
-
-### Q3. 다중 모니터링 환경에서 특정 서버만 터널링할 수 있나요?
-네. 프로필별로 다중 등록이 가능하며, `openconnectsg connect <alias>`로 원하는 터널로 단일 전환할 수 있습니다.
-
----
-
-## 🔒 필요 의존성 패키지 (Dependencies)
+## 🔒 의존성 및 사전 요구 사항 (Dependencies)
 
 `openconnectsg setup` 실행 시 공식 체크섬을 검증하여 자동으로 다운로드 및 배치됩니다:
-- **NSSM (Non-Sucking Service Manager) 2.24**: Windows 서비스 수명주기 감시 및 데몬화 관리 (공식 사이트 및 GitHub 백업 미러 이중화 지원, SHA256 체크섬 검증)
-- **openconnect CLI v9.21 (MinGW64-GnuTLS)**: SSL-VPN 터널링 연결 수립
+* **[OpenConnect CLI v9.21 (MinGW64-GnuTLS)](https://www.infradead.org/openconnect/)**: SSL-VPN 터널링 연결 수립
+* **[NSSM 2.24](https://nssm.cc/)**: Windows 서비스 수명주기 감시 및 데몬화 관리 (SHA256 체크섬 검증)
+* **PowerShell 5.1+**: 관리자 권한 필수
 
 ---
 
-## 🙏 감사의 글 (Acknowledgments & Credits)
+## 🤖 LLM & AI 에이전트 인덱싱 (AI Ingestion)
 
-본 프로젝트는 훌륭한 오픈소스 및 플랫폼 생태계가 있었기에 만들어질 수 있었습니다. 핵심 통신 엔진, 윈도우 서비스 관리 및 스크립팅 런타임을 제공해 주신 프로젝트와 엔지니어분들께 깊은 감사를 전합니다:
-
-- **[OpenConnect](https://www.infradead.org/openconnect/)**: 강력하고 신뢰성 높은 다중 프로토콜 VPN 클라이언트를 만들어 주신 OpenConnect 개발진과 기여자 여러분께 진심으로 감사드립니다. 본 도구의 모든 네트워크 터널링과 보안 접속은 전적으로 `openconnect.exe`에 의존하고 있습니다.
-- **[NSSM (Non-Sucking Service Manager)](https://nssm.cc/)**: Windows 환경에서 프로세스를 견고한 백그라운드 서비스로 구동할 수 있도록 뛰어난 도구를 제공해 주신 Iain Patterson 님과 NSSM 기여자분들께 감사드립니다.
-- **[Microsoft PowerShell](https://github.com/PowerShell/PowerShell)**: Windows 환경에서 시스템 제어, DPAPI 암호화 연동 및 프로세스 오케스트레이션을 유연하고 안정적으로 구현할 수 있는 객체 지향 스크립팅 플랫폼을 제공해 준 Microsoft 및 PowerShell 팀에 감사드립니다.
+* **간략 요약 명세**: [`llms.txt`](llms.txt)
+* **심층 아키텍처 및 구현 명세**: [`llms-full.txt`](llms-full.txt)
+* **AI 코딩 에이전트 제약 규칙**: [`.github/copilot-instructions.md`](.github/copilot-instructions.md)
+* **소프트웨어 메타데이터**: [`CITATION.cff`](CITATION.cff)
 
 ---
 
 ## 📄 라이선스 (License)
 
 본 프로젝트는 [MIT License](LICENSE)에 따라 자유롭게 사용, 수정 및 배포할 수 있습니다.
-
----
-
-## 🏷️ 검색 키워드 및 메타데이터 (Keywords & SEO Index)
-
-`OpenConnect Windows CLI`, `Fortinet SSL-VPN Automation`, `Windows Background VPN Service`, `NSSM OpenConnect Daemon`, `DPAPI Credential Encryption`, `OpenConnect Auto-Reconnect on Boot`, `Single-Tunnel VPN Orchestrator`, `PowerShell VPN CLI`, `Headless Windows VPN`, `Self-Signed Certificate Pin-SHA256`
-
----
-
-## 🤖 LLM & AI 에이전트 인덱싱 (AI Ingestion)
-
-이 저장소는 LLM 웹 크롤러 및 AI 코딩 에이전트(Claude, ChatGPT, Cursor, Copilot)를 위해 표준화된 머신 리더블 문서를 제공합니다:
-- **간략 요약 명세**: [`llms.txt`](llms.txt)
-- **심층 아키텍처 및 내부 구현 명세**: [`llms-full.txt`](llms-full.txt)
-- **AI 에이전트 코딩 제약 규칙**: [`.github/copilot-instructions.md`](.github/copilot-instructions.md)
-- **보안 및 위협 모델 명세**: [`SECURITY.md`](SECURITY.md)
-- **시맨틱 소프트웨어 메타데이터**: [`CITATION.cff`](CITATION.cff)

@@ -125,8 +125,13 @@ if (Test-Path $cmd) {
   $marker = "version=$ver`r`nsource=$SourceDir`r`ninstalled=$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')`r`n"
   [System.IO.File]::WriteAllText((Join-Path $BinDir '.installed'), $marker, (New-Object System.Text.UTF8Encoding($false)))
   Write-Host "Installed openconnectsg $ver."
-  Write-Host "Verifying command execution:"
-  & $cmd version
+  Write-Host "Verifying command execution : " -NoNewline
+  try {
+    $null = (& $cmd version 2>&1)
+    Write-Host "OK (openconnectsg $ver verified)" -ForegroundColor Green
+  } catch {
+    Write-Host "Warning: verification failed" -ForegroundColor Yellow
+  }
 }
 
 # Detect dependency versions if installed

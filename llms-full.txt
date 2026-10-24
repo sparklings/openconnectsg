@@ -36,10 +36,14 @@ openconnectsg/
 ├── llms.txt                        # Concise LLM ingestion specification
 ├── llms-full.txt                   # Deep-dive architectural specification for LLMs
 ├── README.md                       # Public documentation with comparison and FAQ
+├── CHANGELOG.md                    # Keep a Changelog standard release history and artifact audit
 ├── docs/
 │   ├── subcommand-manual.md        # Full CLI subcommand, syntax, and alias reference
 │   ├── install-guide.md            # Online, offline, and air-gapped installation guide
-│   └── openconnectsg.md            # Architectural breakdown and troubleshooting
+│   ├── architecture.md             # Core architecture, process lifecycle, and daemon orchestration
+│   ├── security-credentials.md     # DPAPI LocalMachine encryption, ACL locking, and pin-sha256
+│   ├── troubleshooting.md          # Log analysis, Wintun timeout (0x102) fix, and diagnostics
+│   └── openconnectsg.md            # Overview pointer and cross-document navigation
 ├── install/
 │   └── install-openconnectsg.ps1   # Deployment installer copying binaries to C:\Program Files\OpenConnect\bin and setting system PATH
 └── src/

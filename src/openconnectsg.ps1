@@ -188,7 +188,11 @@ function Do-Connect {
   $profConf = Join-Path (Join-Path $root $t.Name) 'openconnect.conf'
   if (Test-Path $profConf) {
     try {
-      $cLines = Get-Content $profConf -ErrorAction SilentlyContinue | Where-Object { $_ -notmatch '^interface=' }
+      $cLines = @(Get-Content $profConf -ErrorAction SilentlyContinue | Where-Object { $_ -notmatch '^interface=' -and $_ -notmatch '^force-dpd=' })
+      $isFortinet = $cLines | Where-Object { $_ -match '^protocol=fortinet' }
+      if ($isFortinet -and -not ($cLines | Where-Object { $_ -match '^no-dtls' })) {
+        $cLines += "no-dtls"
+      }
       Set-Content -Path $profConf -Value $cLines -Encoding ascii
     } catch {}
   }
@@ -224,8 +228,9 @@ function Do-Connect {
 
   Write-Host " [2/2] Starting service..." -ForegroundColor Cyan
   Write-Host "   Target Service : $($t.Name)" -ForegroundColor White
-  if ($cur -and [string]$cur.Status -eq 'StopPending') {
-    Write-Host "   Waiting for previous session teardown..." -ForegroundColor Gray
+  if ($cur -and [string]$cur.Status -ne 'Stopped' -and [string]$cur.Status -ne 'Running') {
+    Write-Host "   Resetting previous session state ($($cur.Status))..." -ForegroundColor Gray
+    [void](Invoke-Nssm @('stop', $t.Name))
     [void](Wait-ServiceStatus $t.Name 'Stopped' 10)
   }
 
@@ -311,6 +316,11 @@ function Do-Disconnect {
           Write-Host "Failed to stop." -ForegroundColor Yellow
           $rc = 1
         } else {
+          $pDir = Join-Path $root $p.Name
+          $errPath = Join-Path $pDir 'logs\err.log'
+          if (Test-Path $errPath) { try { Set-Content -Path $errPath -Value $null -Force } catch {} }
+          $hbPath = Join-Path $pDir 'heartbeat.status'
+          if (Test-Path $hbPath) { try { Set-Content -Path $hbPath -Value "LastReceived=$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')`r`nCount=0`r`nStatus=STOPPED`r`n" -Force } catch {} }
           Write-Host "Stopped." -ForegroundColor Green
         }
       }
@@ -337,6 +347,17 @@ function Do-Disconnect {
     Write-Host ""
     return 1
   }
+  # Clean up stale error logs and update heartbeat on graceful stop
+  $pDir = Join-Path $root $t.Name
+  $errPath = Join-Path $pDir 'logs\err.log'
+  if (Test-Path $errPath) {
+    try { Set-Content -Path $errPath -Value $null -Force } catch {}
+  }
+  $hbPath = Join-Path $pDir 'heartbeat.status'
+  if (Test-Path $hbPath) {
+    try { Set-Content -Path $hbPath -Value "LastReceived=$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')`r`nCount=0`r`nStatus=STOPPED`r`n" -Force } catch {}
+  }
+
   Write-Host "Stopped." -ForegroundColor Green
   Write-Host ""
   Write-Host " ==============================================================================" -ForegroundColor DarkGray
@@ -391,8 +412,11 @@ function Do-Status {
     if (Test-Path $hbFile) {
       $hbRaw = Get-Content $hbFile -Raw -ErrorAction SilentlyContinue
       $lastRecv = if ($hbRaw -match 'LastReceived=([^\r\n]+)') { $matches[1].Trim() } else { $null }
-      $hbCount  = if ($hbRaw -match 'Count=(\d+)') { $matches[1].Trim() } else { '0' }
-      if ($lastRecv) {
+      $hbCount  = if ($hbRaw -match 'Count=(\d+)') { [int]$matches[1].Trim() } else { 0 }
+      $hbState  = if ($hbRaw -match 'Status=([^\r\n]+)') { $matches[1].Trim() } else { 'UNKNOWN' }
+      if ($hbState -eq 'STARTING' -or $hbCount -eq 0) {
+        Write-Host "   Status     : INITIALIZING (Awaiting first keepalive packet)" -ForegroundColor Yellow
+      } elseif ($lastRecv) {
         try {
           $secAgo = [math]::Max(0, [int]((Get-Date) - [DateTime]::Parse($lastRecv)).TotalSeconds)
           if ($secAgo -le 30) {
@@ -405,6 +429,8 @@ function Do-Status {
         } catch {
           Write-Host "   Status     : Recorded ($lastRecv, packets: $hbCount)" -ForegroundColor DarkCyan
         }
+      } elseif ($hbState -eq 'STOPPED') {
+        Write-Host "   Status     : STOPPED (Terminated)" -ForegroundColor Red
       }
     } else {
       Write-Host "   Status     : Waiting for keepalive packets..." -ForegroundColor DarkGray
@@ -413,24 +439,32 @@ function Do-Status {
 
   $errFile = Join-Path $profDir 'logs\err.log'
   $hasErr = $false
-  if (Test-Path $errFile) {
-    $errLen = (Get-Item $errFile).Length
-    if ($errLen -gt 0) {
-      $recentErr = (Get-Content $errFile -Tail 3 -ErrorAction SilentlyContinue) -join "`n"
-      if (-not [string]::IsNullOrWhiteSpace($recentErr.Trim())) {
-        $hasErr = $true
-        Write-Host ""
-        Write-Host " [Recent Error]" -ForegroundColor Red
-        $recentErr.Split("`n") | ForEach-Object {
-          if (-not [string]::IsNullOrWhiteSpace($_)) { Write-Host "   $_" -ForegroundColor DarkRed }
+  if ($status -eq 'Stopped') {
+    Write-Host ""
+    Write-Host " [Recent Error]" -ForegroundColor Cyan
+    Write-Host "   None (Service is stopped)" -ForegroundColor DarkGray
+  } else {
+    if (Test-Path $errFile) {
+      $errLen = (Get-Item $errFile).Length
+      if ($errLen -gt 0) {
+        $recentErrLines = @(Get-Content $errFile -Tail 10 -ErrorAction SilentlyContinue | Where-Object {
+          $_ -notmatch 'WARNING: Support for Wintun is experimental|install the TAP-Windows driver instead|Using Wintun device|https://www\.infradead\.org' -and -not [string]::IsNullOrWhiteSpace($_.Trim())
+        })
+        if ($recentErrLines.Count -gt 0) {
+          $hasErr = $true
+          Write-Host ""
+          Write-Host " [Recent Error]" -ForegroundColor Red
+          $recentErrLines | Select-Object -Last 3 | ForEach-Object {
+            Write-Host "   $_" -ForegroundColor DarkRed
+          }
         }
       }
     }
-  }
-  if (-not $hasErr) {
-    Write-Host ""
-    Write-Host " [Recent Error]" -ForegroundColor Cyan
-    Write-Host "   None (Logs are clean)" -ForegroundColor DarkGray
+    if (-not $hasErr) {
+      Write-Host ""
+      Write-Host " [Recent Error]" -ForegroundColor Cyan
+      Write-Host "   None (Logs are clean)" -ForegroundColor DarkGray
+    }
   }
 
   Write-Host ""
@@ -915,7 +949,11 @@ function Do-Upgrade {
         }
         $confPath = Join-Path $_.FullName 'openconnect.conf'
         if (Test-Path $confPath) {
-          $cLines = Get-Content $confPath -ErrorAction SilentlyContinue | Where-Object { $_ -notmatch '^interface=' }
+          $cLines = @(Get-Content $confPath -ErrorAction SilentlyContinue | Where-Object { $_ -notmatch '^interface=' -and $_ -notmatch '^force-dpd=' })
+          $isFortinet = $cLines | Where-Object { $_ -match '^protocol=fortinet' }
+          if ($isFortinet -and -not ($cLines | Where-Object { $_ -match '^no-dtls' })) {
+            $cLines += "no-dtls"
+          }
           Set-Content -Path $confPath -Value $cLines -Encoding ascii
         }
       }
@@ -975,7 +1013,11 @@ function Do-ServiceRun {
 
     # Sanitize configuration: strip problematic interface= override causing Wintun adapter creation timeout
     try {
-      $confLines = Get-Content $confFile -ErrorAction SilentlyContinue | Where-Object { $_ -notmatch '^interface=' }
+      $confLines = @(Get-Content $confFile -ErrorAction SilentlyContinue | Where-Object { $_ -notmatch '^interface=' -and $_ -notmatch '^force-dpd=' })
+      $isFortinet = $confLines | Where-Object { $_ -match '^protocol=fortinet' }
+      if ($isFortinet -and -not ($confLines | Where-Object { $_ -match '^no-dtls' })) {
+        $confLines += "no-dtls"
+      }
       Set-Content -Path $confFile -Value $confLines -Encoding ascii
     } catch {}
 
@@ -997,7 +1039,13 @@ function Do-ServiceRun {
     $logsDir = Join-Path $dir 'logs'
     if (-not (Test-Path $logsDir)) { New-Item -ItemType Directory -Path $logsDir -Force | Out-Null }
     $errLog = Join-Path $logsDir 'err.log'
+    if (Test-Path $errLog) {
+      try { Set-Content -Path $errLog -Value $null -Force } catch {}
+    }
     $hbStatus = Join-Path $dir 'heartbeat.status'
+    try {
+      Set-Content -Path $hbStatus -Value "LastReceived=$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')`r`nCount=0`r`nStatus=STARTING`r`n" -Force
+    } catch {}
 
     if (-not ('OpenConnectSg.StderrFilter' -as [type])) {
       $filterCs = @'

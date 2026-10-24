@@ -23,7 +23,10 @@
 - `install/install-openconnectsg.ps1`: One-click system installer deploying to `C:\Program Files\OpenConnect\bin`.
 - `docs/subcommand-manual.md`: Exhaustive CLI subcommand and alias reference manual.
 - `docs/install-guide.md`: Step-by-step deployment guide for online, offline, and air-gapped environments.
-- `docs/openconnectsg.md`: Technical architecture and deep-dive design documentation.
+- `CHANGELOG.md`: Full version release notes and artifact traceability.
+- `docs/architecture.md`: Technical architecture and deep-dive design documentation.
+- `docs/security-credentials.md`: DPAPI LocalMachine credential encryption, ACL locking, and RFC 7469 pinning.
+- `docs/troubleshooting.md`: Troubleshooting guide, log analysis, Wintun timeout (0x102) remediation.
 
 ## CLI Command Quick Reference
 - `openconnectsg` / `openconnectsg list` / `openconnectsg ls`: List registered VPN profiles with connection status.
