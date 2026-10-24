@@ -74,7 +74,7 @@ OpenConnectSg는 **NSSM (Non-Sucking Service Manager)** 을 통해 시스템 부
 
 ## 4. Multi-Layer Defense: NTFS ACL Hardening
 
-`LocalMachine` 스코프는 동일 PC 내의 다른 프로세스에 의한 복호화 가능성이 열려 있다는 본질적 특성을 가집니다. **OpenConnectSg** 는 이를 방어하기 위해 **NTFS ACL (Access Control List) 상속 제거 및 최소 권한 고정** 을 2차 방벽으로 결합했습니다.
+`LocalMachine` 스코프는 동일 PC 내의 다른 프로세스에 의한 복호화 가능성이 열려 있다는 본질적 특성을 가집니다. **OpenConnectSg** 는 이를 방어하기 위해 **NTFS ACL (Access Control List) 상속 제거 및 최소 권한 고정** 을 2차 방벽으로 결합했습니다. (상세한 NTFS 보안 모델 및 Well-Known SID 하드닝 명세는 [[Windows-ICACLS-Technical-Guide]] 참조)
 
 ### 4.1 권한 격리 구현 명세
 비밀번호 암호화 바이너리(`pw.bin`)가 생성되는 즉시, [init-openconnectsg.ps1](https://github.com/sparklings/openconnectsg/blob/main/src/init-openconnectsg.ps1)은 Windows 네이티브 `icacls.exe` 엔진을 직접 호출하여 모든 권한 상속을 차단하고 허용 계정을 2개로 강제 격리합니다:

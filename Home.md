@@ -9,6 +9,9 @@ Welcome to the official technical documentation wiki for **OpenConnectSg**, an e
 * **[[Windows-DPAPI-Technical-Guide]]**  
   *Deep-dive engineering specification on Windows Data Protection API (DPAPI), `LocalMachine` scope, NTFS ACL hardening, and zero-plaintext credential persistence.*
 
+* **[[Windows-ICACLS-Technical-Guide]]**  
+  *Exhaustive technical report on Windows icacls.exe engine, NTFS DACL security descriptors, inheritance stripping (`/inheritance:r`), and locale-agnostic Well-Known SID hardening.*
+
 ---
 
 ## 🔗 Main Repository Quick Links

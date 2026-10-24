@@ -2,6 +2,7 @@
 
 * **[[Home]]**
 * **[[Windows-DPAPI-Technical-Guide]]**
+* **[[Windows-ICACLS-Technical-Guide]]**
 
 ---
 
