@@ -1,6 +1,6 @@
 # Windows DPAPI Technical Guide (자격 증명 보안 및 무인 주입 아키텍처)
 
-본 문서는 **OpenConnectSg**에서 VPN 접속 자격 증명(비밀번호)을 평문 노출 없이 디스크에 안전하게 영속화하고, Windows 백그라운드 서비스(NSSM 데몬) 환경에서 무인증으로 자격 증명을 주입하기 위해 채택한 **Windows DPAPI (Data Protection API)**의 내부 메커니즘과 보안 공학적 설계 명세를 기술합니다.
+본 문서는 **OpenConnectSg** 에서 VPN 접속 자격 증명(비밀번호)을 평문 노출 없이 디스크에 안전하게 영속화하고, Windows 백그라운드 서비스(NSSM 데몬) 환경에서 무인증으로 자격 증명을 주입하기 위해 채택한 **Windows DPAPI (Data Protection API)** 의 내부 메커니즘과 보안 공학적 설계 명세를 기술합니다.
 
 ---
 
@@ -13,18 +13,18 @@
 2. **백업 및 소스 제어 유출**: 스크립트나 로그가 Git 저장소, 백업 드라이브, 클라우드 스토리지에 업로드될 때 자격 증명 누출.
 3. **프로세스 모니터링 노출**: 명령줄 인수(`--passwd-on-stdin` 대신 `--password "plain"`)로 전달 시 작업 관리자나 Process Hacker, Sysmon 로깅을 통해 평문 노출.
 
-**OpenConnectSg**는 별도의 외부 볼트(HashiCorp Vault, CyberArk 등) 에이전트를 설치하지 않고도, Windows 운영체제 커널이 기본 보증하는 **DPAPI (Data Protection API)** 및 **.NET 암호화 서브시스템**을 활용하여 **"평문 제로(Zero-Plaintext) 보안 모델"**을 구현했습니다.
+**OpenConnectSg** 는 별도의 외부 볼트(HashiCorp Vault, CyberArk 등) 에이전트를 설치하지 않고도, Windows 운영체제 커널이 기본 보증하는 **DPAPI (Data Protection API)** 및 **.NET 암호화 서브시스템** 을 활용하여 **"평문 제로(Zero-Plaintext) 보안 모델"** 을 구현했습니다.
 
 ---
 
 ## 2. Windows DPAPI Architecture & Mechanisms
 
 ### 2.1 DPAPI 정의
-**DPAPI (Data Protection Application Programming Interface)**는 Windows 2000부터 도입되어 Windows 11 및 Windows Server 2025에 이르기까지 검증된 Windows 네이티브 대칭 키 암호화 서브시스템입니다.
+**DPAPI (Data Protection Application Programming Interface)** 는 Windows 2000부터 도입되어 Windows 11 및 Windows Server 2025에 이르기까지 검증된 Windows 네이티브 대칭 키 암호화 서브시스템입니다.
 
-DPAPI의 가장 큰 공학적 가치는 **키 관리(Key Management)의 운영체제 위임**에 있습니다:
+DPAPI의 가장 큰 공학적 가치는 **키 관리(Key Management)의 운영체제 위임** 에 있습니다:
 * 기존 암호화(AES, RSA 등)는 대칭 키를 개발자가 어딘가에 보관해야 하므로 "키를 보호하기 위한 또 다른 키"라는 닭과 달걀의 딜레마(Key Storage Problem)가 발생합니다.
-* DPAPI는 Windows OS와 **LSA (Local Security Authority)**가 로그인 사용자 또는 머신의 고유 하드웨어/OS 비밀값으로부터 암호화 마스터 키를 자동으로 도출(Derive)하므로, 개발자가 키를 직접 관리할 필요가 전혀 없습니다.
+* DPAPI는 Windows OS와 **LSA (Local Security Authority)** 가 로그인 사용자 또는 머신의 고유 하드웨어/OS 비밀값으로부터 암호화 마스터 키를 자동으로 도출(Derive)하므로, 개발자가 키를 직접 관리할 필요가 전혀 없습니다.
 
 ```mermaid
 flowchart TD
@@ -63,7 +63,7 @@ flowchart TD
 | **보안 보완책 필요성** | 기본 OS 사용자 분리로 충족 | **NTFS ACL (icacls) 엄격 제한 필수** |
 
 ### 3.1 왜 OpenConnectSg는 `LocalMachine`을 채택했는가?
-OpenConnectSg는 **NSSM (Non-Sucking Service Manager)**을 통해 시스템 부팅 시 사용자가 데스크톱에 로그인하지 않아도 VPN 백그라운드 서비스를 자동 시작(`StartType: Automatic`)할 수 있어야 합니다.
+OpenConnectSg는 **NSSM (Non-Sucking Service Manager)** 을 통해 시스템 부팅 시 사용자가 데스크톱에 로그인하지 않아도 VPN 백그라운드 서비스를 자동 시작(`StartType: Automatic`)할 수 있어야 합니다.
 
 * 만약 `CurrentUser` 스코프를 사용하면:
   1. 관리자 콘솔을 닫거나 사용자가 로그오프하는 순간 암호 해독 컨텍스트가 소멸합니다.
@@ -74,7 +74,7 @@ OpenConnectSg는 **NSSM (Non-Sucking Service Manager)**을 통해 시스템 부�
 
 ## 4. Multi-Layer Defense: NTFS ACL Hardening
 
-`LocalMachine` 스코프는 동일 PC 내의 다른 프로세스에 의한 복호화 가능성이 열려 있다는 본질적 특성을 가집니다. **OpenConnectSg**는 이를 방어하기 위해 **NTFS ACL (Access Control List) 상속 제거 및 최소 권한 고정**을 2차 방벽으로 결합했습니다.
+`LocalMachine` 스코프는 동일 PC 내의 다른 프로세스에 의한 복호화 가능성이 열려 있다는 본질적 특성을 가집니다. **OpenConnectSg** 는 이를 방어하기 위해 **NTFS ACL (Access Control List) 상속 제거 및 최소 권한 고정** 을 2차 방벽으로 결합했습니다.
 
 ### 4.1 권한 격리 구현 명세
 비밀번호 암호화 바이너리(`pw.bin`)가 생성되는 즉시, [init-openconnectsg.ps1](https://github.com/sparklings/openconnectsg/blob/main/src/init-openconnectsg.ps1)은 Windows 네이티브 `icacls.exe` 엔진을 직접 호출하여 모든 권한 상속을 차단하고 허용 계정을 2개로 강제 격리합니다:
