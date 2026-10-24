@@ -1,4 +1,5 @@
-# Windows DPAPI Technical Guide (자격 증명 보안 및 무인 주입 아키텍처)
+# Windows DPAPI Technical Guide
+### 자격 증명 보안 및 무인 주입 아키텍처
 
 본 문서는 **OpenConnectSg** 에서 VPN 접속 자격 증명(비밀번호)을 평문 노출 없이 디스크에 안전하게 영속화하고, Windows 백그라운드 서비스(NSSM 데몬) 환경에서 무인증으로 자격 증명을 주입하기 위해 채택한 **Windows DPAPI (Data Protection API)** 의 내부 메커니즘과 보안 공학적 설계 명세를 기술합니다.
 
