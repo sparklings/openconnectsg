@@ -5,7 +5,7 @@
 
 ---
 
-## 1. 개요 및 보안 배경 (Executive Summary)
+## 1. Executive Summary & Security Background
 
 Windows 환경에서 자격 증명을 암호화할 때 **DPAPI (Data Protection API)** 의 `LocalMachine` 스코프를 사용하면 시스템 부팅 시 무인 서비스(`SYSTEM`)로 VPN 터널을 안전하게 자동 구동할 수 있습니다. (자세한 암호화 메커니즘은 [[Windows-DPAPI-Technical-Guide]] 참조)
 
@@ -17,9 +17,9 @@ Windows 환경에서 자격 증명을 암호화할 때 **DPAPI (Data Protection 
 
 ---
 
-## 2. Windows NTFS 보안 서브시스템 및 ACL 아키텍처
+## 2. Windows NTFS Security Subsystem & ACL Architecture
 
-### 2.1 보안 기술자(Security Descriptor)의 구조
+### 2.1 Structure of the Security Descriptor
 NTFS 파일 시스템의 모든 파일 및 디렉터리 객체는 Windows 커널의 **보안 기술자(Security Descriptor)** 에 의해 보호됩니다.
 
 ```mermaid
@@ -41,7 +41,7 @@ flowchart TD
     DACL --> DACL_Details
 ```
 
-### 2.2 SRM (Security Reference Monitor)의 접근 평가 알고리즘
+### 2.2 Security Reference Monitor (SRM) Access Evaluation Algorithm
 프로세스가 `pw.bin` 파일에 접근(`CreateFile` / `OpenProcess`)을 요청하면, Windows 커널의 **SRM (Security Reference Monitor)** 은 호출자의 액세스 토큰(Token)과 객체의 DACL 내 **ACE(Access Control Entry)** 들을 위에서 아래로 순차 평가합니다:
 
 1. **명시적 거부(Explicit Deny) 우선**: 토큰의 SID가 명시적 거부 ACE에 매칭되면 즉시 `STATUS_ACCESS_DENIED` 반환.
@@ -51,7 +51,7 @@ flowchart TD
 
 ---
 
-## 3. cacls vs icacls 진화 및 기술 차이
+## 3. Technical Evolution: cacls vs icacls
 
 Windows 시스템 관리에서 접근 권한을 제어하는 CLI 도구는 시대에 따라 발전해 왔습니다:
 
@@ -66,9 +66,9 @@ Windows 시스템 관리에서 접근 권한을 제어하는 CLI 도구는 시�
 
 ---
 
-## 4. icacls.exe 핵심 파라미터 및 권한 마스크 상세 명세
+## 4. icacls.exe Core Parameters & Permission Masks
 
-### 4.1 권한 수준(Permission Masks)
+### 4.1 Permission Levels & Access Rights
 `icacls` 에서 지정 가능한 주요 권한 플래그는 다음과 같습니다:
 
 | 플래그 | 명칭 | 세부 파일 시스템 권한 | 보안 영향도 |
@@ -82,7 +82,7 @@ Windows 시스템 관리에서 접근 권한을 제어하는 CLI 도구는 시�
 
 ---
 
-### 4.2 상속 제어 옵션 (`/inheritance`)
+### 4.2 Inheritance Control Options (/inheritance)
 
 Windows에서 파일이 생성되면 기본적으로 **부모 디렉터리(`C:\Program Files\...`)의 DACL을 그대로 상속** 받습니다. 이 경우 부모 폴더에 권한이 있는 모든 계정(예: `Users`, `Authenticated Users`)이 자식 파일에도 접근할 수 있는 치명적인 구멍이 생깁니다.
 
@@ -105,9 +105,9 @@ flowchart LR
 
 ---
 
-## 5. OpenConnectSg의 Well-Known SID 하드닝 설계
+## 5. Locale-Agnostic Well-Known SID Hardening Design
 
-### 5.1 로케일 독립성(Language Agnostic)의 필요성
+### 5.1 The Critical Need for Language Agnosticism
 일반적인 배치 스크립트나 관리자 가이드에서는 다음과 같이 계정 이름을 문자열로 직접 사용합니다:
 
 ```cmd
@@ -120,7 +120,7 @@ icacls "pw.bin" /grant "SYSTEM:F" /grant "Administrators:F"
 * **독일어 Windows**: `Administratoren` 으로 번역됨.
 * **프랑스어 Windows**: `Administrateurs` 로 번역됨.
 
-### 5.2 Well-Known SID 문법 (`*SID`) 채택
+### 5.2 Adoption of Well-Known SID Syntax (*SID)
 **OpenConnectSg** 는 운영체제의 언어 설정과 무관하게 전 세계 모든 Windows 10/11 및 Windows Server 환경에서 100% 동일하게 동작하도록 **Well-Known SID 접두사(`*`) 표기법** 을 채택했습니다.
 
 | 계정 / 보안 주체 | 표준 Well-Known SID | `icacls` 표기법 | 역할 및 권한 |
@@ -130,9 +130,9 @@ icacls "pw.bin" /grant "SYSTEM:F" /grant "Administrators:F"
 
 ---
 
-## 6. 소스 코드 구현 및 실행 메커니즘 분석
+## 6. Source Code Implementation Analysis
 
-### 6.1 프로필 생성 시 원스톱 권한 잠금 ([src/init-openconnectsg.ps1](https://github.com/sparklings/openconnectsg/blob/main/src/init-openconnectsg.ps1))
+### 6.1 Atomic Permission Locking in Profile Wizard (src/init-openconnectsg.ps1)
 프로필 마법사(`init-openconnectsg.ps1`)의 152번째 라인은 DPAPI로 암호화된 비밀번호 바이너리(`pw.bin`)가 생성되자마자 단 한 줄의 원자적(Atomic) 명령으로 상속 제거와 권한 주입을 완결합니다:
 
 ```powershell
@@ -140,7 +140,7 @@ icacls "pw.bin" /grant "SYSTEM:F" /grant "Administrators:F"
 icacls (Join-Path $dir "pw.bin") /inheritance:r /grant "*S-1-5-18:F" /grant "*S-1-5-32-544:F" | Out-Null
 ```
 
-#### 세부 동작 과정
+#### Step-by-Step Execution Breakdown
 1. **`(Join-Path $dir "pw.bin")`**: 대상 프로필 폴더 내의 암호화 바이너리 절대 경로 산출.
 2. **`/inheritance:r`**: `Program Files` 부모 디렉터리로부터 물려받은 `Users`, `Authenticated Users`, `ALL APPLICATION PACKAGES` 등의 모든 상속 권한을 단 1ms 만에 완전 파기.
 3. **`/grant "*S-1-5-18:F"`**: 머신 로컬 시스템 계정(`SYSTEM`)에 대해 Full Control(`F`) 권한 부여.
@@ -149,7 +149,7 @@ icacls (Join-Path $dir "pw.bin") /inheritance:r /grant "*S-1-5-18:F" /grant "*S-
 
 ---
 
-## 7. DPAPI와의 시너지: 다층 방어(Defense-in-Depth) 매트릭스
+## 7. Defense-in-Depth Matrix: DPAPI & icacls Synergy
 
 DPAPI 암호화와 icacls 파일 접근 제어의 상호 결합은 다음과 같은 전방위 위협 시나리오를 무력화합니다:
 
@@ -186,16 +186,16 @@ flowchart TD
 
 ---
 
-## 8. 시스템 관리자 감사(Audit) 및 검증 가이드
+## 8. System Administrator Audit & Verification Guide
 
-### 8.1 icacls를 이용한 실시간 권한 감사
-관리자는 PowerShell 콘솔에서 다음 명령어를 실행하여 현재 등록된 프로필의 ACL 상태를 직접 확인할 수 있습니다:
+### 8.1 Real-Time ACL Inspection via icacls
+관리자는 다음 검증 명령어를 PowerShell 콘솔에 입력하여 `pw.bin` 의 암호화 상태와 ACL 보호 상태를 언제든지 검증할 수 있습니다:
 
 ```powershell
 icacls "C:\Program Files\OpenConnect\profiles\*\pw.bin"
 ```
 
-#### 정상적인 출력 예시
+#### Expected Normal Output
 ```text
 C:\Program Files\OpenConnect\profiles\openconnect_203.231.7.150_10443_103995b4\pw.bin NT AUTHORITY\SYSTEM:(F)
                                                                                      BUILTIN\Administrators:(F)
@@ -207,7 +207,7 @@ Successfully processed 1 files; Failed processing 0 files
 
 ---
 
-### 8.2 PowerShell .NET 객체를 통한 상세 권한 비트 검증
+### 8.2 Detailed Permission Bit Verification via PowerShell .NET
 PowerShell의 `Get-Acl` 및 .NET `AccessRule` 객체를 활용하면 보다 정밀한 프로그래밍 방식의 감사가 가능합니다:
 
 ```powershell
@@ -223,16 +223,16 @@ foreach ($rule in $acl.Access) {
 } | Format-Table -AutoSize
 ```
 
-#### 정상 검증 기준
+#### Verification Criteria
 * `AreAccessRulesProtected`: **`True`** (부모 상속이 완전히 차단됨)
 * `IsInherited`: **`False`** (모든 룰이 부모로부터 물려받지 않은 명시적 룰임)
 * `AccessControlType`: **`Allow`** 만 존재 (SYSTEM 및 Administrators)
 
 ---
 
-## 9. 트러블슈팅 및 비상 복구 가이드
+## 9. Troubleshooting & Emergency Recovery Guide
 
-### 9.1 권한 손상으로 인한 접근 불가 시 소유권 탈환
+### 9.1 Forced Ownership Takeover via takeown
 관리자 계정의 권한이 실수로 제거되었거나 디렉터리 이동 과정에서 권한이 뒤틀려 `Access Denied` 가 발생할 경우, Windows 내장 `takeown.exe` 도구로 소유권을 강제 탈환한 후 ACL을 재설정할 수 있습니다:
 
 ```powershell
@@ -250,7 +250,7 @@ Get-ChildItem "C:\Program Files\OpenConnect\profiles\*\pw.bin" | ForEach-Object 
 
 ---
 
-## 10. 결론 (Conclusion)
+## 10. Conclusion
 
 OpenConnectSg의 `icacls.exe` 엔진 활용은 단순한 파일 숨김을 넘어, **Windows 보안 서브시스템(SRM, DACL, Well-Known SID)의 핵심 원리를 관통하여 설계된 표준 엔터프라이즈 하드닝 모범 사례** 입니다.
 
