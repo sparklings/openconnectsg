@@ -121,3 +121,9 @@ openconnectsg disconnect all       # 모든 활성 VPN 연결 해제
 ## 📄 라이선스 (License)
 
 본 프로젝트는 [MIT License](LICENSE)에 따라 자유롭게 사용, 수정 및 배포할 수 있습니다.
+
+---
+
+## ⚖️ 상표권 및 면책 조항 (Trademark Disclaimer)
+
+> **Disclaimer**: All product names, logos, and brands are property of their respective owners. Fortinet® and FortiGate® are registered trademarks of Fortinet, Inc. Use of these names in this project is strictly for interoperability demonstration and does not imply any affiliation, sponsorship, or endorsement.
