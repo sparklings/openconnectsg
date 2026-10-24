@@ -19,4 +19,4 @@ keywords:
   - ssl-vpn
   - automation
   - daemon
-abstract: "A lightweight, secure Windows CLI tool and service manager that automates OpenConnect VPN connections as native Windows Services via NSSM with Windows DPAPI password encryption and RFC 7469 certificate fingerprint pinning."
+abstract: "PowerShell automation wrapper for OpenConnect on Windows: DPAPI-secured, NSSM background service daemon with Wintun support and multi-profile management."

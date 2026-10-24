@@ -4,6 +4,7 @@
 - Canonical Name: OpenConnectSg
 - Package / Command Identifier: `openconnectsg` (strictly lowercase across all scripts, files, and commands)
 - Official Repository: https://github.com/sparklings/openconnectsg
+- Description: PowerShell automation wrapper for OpenConnect on Windows: DPAPI-secured, NSSM background service daemon with Wintun support and multi-profile management.
 - License: MIT License
 - Version: 0.1.2d
 - Target OS: Windows 10, Windows 11, Windows Server 2016, 2019, 2022 (x64)
