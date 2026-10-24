@@ -2,9 +2,9 @@
 
 > PowerShell automation wrapper for OpenConnect on Windows: DPAPI-secured, NSSM background service daemon with Wintun support and multi-profile management.
 
-> 프로젝트 공식 명칭은 **OpenConnectSg**로 정의하며, 실행 명령·스크립트 소스코드·문서 및 내부 식별자는 모두 소문자 `openconnectsg`로 표기합니다.
+프로젝트 공식 명칭은 **OpenConnectSg**로 정의하며, 실행 명령·스크립트 소스코드·문서 및 내부 식별자는 모두 소문자 `openconnectsg`로 표기합니다.
 
-Windows 환경에서 `openconnect.exe` CLI 도구를 사용할 때 발생하는 반복적인 수작업(매번 비밀번호 입력, 콘솔 창 유지, 다중 접속 관리, 재부팅 시 수동 재연결)을 제거하기 위한 PowerShell 기반 백그라운드 서비스 자동화 도구입니다.
+`openconnectsg`은 Windows 환경에서 `openconnect.exe` CLI 도구를 사용할 때 발생하는 반복적인 수작업(매번 비밀번호 입력, 콘솔 창 유지, 다중 접속 관리, 재부팅 시 수동 재연결)을 제거하기 위한 PowerShell 기반 백그라운드 서비스 자동화 도구입니다.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Platform: Windows](https://img.shields.io/badge/Platform-Windows%2010%2F11%2FServer-blue.svg)]()
@@ -13,16 +13,16 @@ Windows 환경에서 `openconnect.exe` CLI 도구를 사용할 때 발생하는 
 
 ---
 
-## 📌 핵심 기능
+## Key Features
 
-* **백그라운드 무중단 데몬**: NSSM 2.24와 결합하여 터미널 창을 띄우지 않고 Windows 서비스로 구동하며, OS 부팅 시 자동 연결.
-* **DPAPI 비밀번호 암호화 보관**: Windows DPAPI(`LocalMachine`)를 통해 암호를 `pw.bin`에 암호화 저장하고 `icacls`로 접근을 통제.
-* **Wintun 커널 터널링**: WireGuard Wintun 고속 가상 인터페이스와 `vpnc-script-win.js`를 통한 안정적인 Split Routing 구성.
-* **단일 터널 보장 및 TUI 통합**: 전역 뮤텍스로 세션 충돌을 원천 방지하며, 80컬럼 표준 TUI 및 버전 검증 업그레이드 지원.
+* **백그라운드 무중단 데몬**: NSSM 2.24와 결합하여 터미널 창을 띄우지 않고 Windows 서비스로 구동하며, OS 부팅 시 자동 연결
+* **DPAPI 비밀번호 암호화 보관**: Windows DPAPI(`LocalMachine`)를 통해 암호를 `pw.bin`에 암호화 저장하고 `icacls`로 접근을 통제
+* **Wintun 커널 터널링**: WireGuard Wintun 고속 가상 인터페이스와 `vpnc-script-win.js`를 통한 안정적인 Split Routing 구성
+* **단일 터널 보장**: 전역 뮤텍스로 세션 충돌을 원천 방지
 
 ---
 
-## 📚 개발산출물 및 문서 인덱스 (Documentation Hub)
+## Documentation Hub
 
 본 프로젝트는 산출물 및 기능별로 세분화된 전용 문서를 제공합니다. 상세 내용은 아래 개별 문서를 참조하십시오:
 
@@ -37,10 +37,10 @@ Windows 환경에서 `openconnect.exe` CLI 도구를 사용할 때 발생하는 
 
 ---
 
-## ⚡ 빠른 시작 (Quick Start)
+## Quick Start
 
-### 1) 저장소 복제 및 시스템 설치
-관리자 권한 PowerShell에서 1회 실행합니다:
+### 1) Clone Repository and System Installation
+관리자 권한으로 PowerShell 다음의 명령을 실행합니다:
 
 ```powershell
 # 1. 저장소 clone
@@ -50,14 +50,14 @@ git clone https://github.com/sparklings/openconnectsg.git "C:\Program Files\Open
 powershell -ExecutionPolicy Bypass -File "C:\Program Files\OpenConnect\repo\install\install-openconnectsg.ps1"
 ```
 
-### 2) 새 터미널에서 프로필 등록 (대화형 마법사)
+### 2) Profile Setup in New Terminal (Interactive Wizard)
 새 PowerShell 창을 열고 설정 마법사를 실행합니다:
 ```powershell
 openconnectsg setup
 ```
 > 서버 주소, 포트, 계정, 비밀번호를 입력하면 NSSM·openconnect 의존성 검증, 비밀번호 DPAPI 암호화 및 서비스 등록이 원스톱으로 진행됩니다.
 
-### 3) 일상적인 VPN 운영
+### 3) Routine VPN Operations
 ```powershell
 openconnectsg list                 # 등록된 프로필 목록 및 연결 상태 확인
 openconnectsg connect 1            # 1번 프로필로 연결 (기존 활성 터널 자동 해제)
@@ -68,7 +68,7 @@ openconnectsg disconnect all       # 모든 활성 VPN 연결 해제
 
 ---
 
-## 📖 CLI 명령어 요약 (Quick Command Reference)
+## Quick Command Reference
 
 | 명령어 | 단축 별칭 | 설명 |
 |---|---|---|
@@ -90,7 +90,7 @@ openconnectsg disconnect all       # 모든 활성 VPN 연결 해제
 
 ---
 
-## 🚀 최신 릴리스 정보 (v0.1.2d)
+## Latest Release Information (v0.1.2d)
 
 * **업그레이드 버전 검증 및 무중단 보호**: `openconnectsg upgrade` 실행 시 현재 설치 버전과 최신 버전을 비교하여 동일한 경우 배포 및 서비스 재시작을 건너뛰어 활성 VPN 세션을 보호합니다.
 * **강제 재배포 옵션 (`--force`)**: 동일 버전이라도 바이너리 재배포가 필요한 경우 강제 업그레이드를 지원합니다.
@@ -100,7 +100,7 @@ openconnectsg disconnect all       # 모든 활성 VPN 연결 해제
 
 ---
 
-## 🔒 의존성 및 사전 요구 사항 (Dependencies)
+## Dependencies and Prerequisites
 
 `openconnectsg setup` 실행 시 공식 체크섬을 검증하여 자동으로 다운로드 및 배치됩니다:
 * **[OpenConnect CLI v9.21 (MinGW64-GnuTLS)](https://www.infradead.org/openconnect/)**: SSL-VPN 터널링 연결 수립
@@ -109,7 +109,7 @@ openconnectsg disconnect all       # 모든 활성 VPN 연결 해제
 
 ---
 
-## 🤖 LLM & AI 에이전트 인덱싱 (AI Ingestion)
+## LLM & AI Agent Indexing (AI Ingestion)
 
 * **간략 요약 명세**: [`llms.txt`](llms.txt)
 * **심층 아키텍처 및 구현 명세**: [`llms-full.txt`](llms-full.txt)
@@ -118,12 +118,12 @@ openconnectsg disconnect all       # 모든 활성 VPN 연결 해제
 
 ---
 
-## 📄 라이선스 (License)
+## License
 
 본 프로젝트는 [MIT License](LICENSE)에 따라 자유롭게 사용, 수정 및 배포할 수 있습니다.
 
 ---
 
-## ⚖️ 상표권 및 면책 조항 (Trademark Disclaimer)
+## Trademark Disclaimer
 
 > **Disclaimer**: All product names, logos, and brands are property of their respective owners. Fortinet® and FortiGate® are registered trademarks of Fortinet, Inc. Use of these names in this project is strictly for interoperability demonstration and does not imply any affiliation, sponsorship, or endorsement.

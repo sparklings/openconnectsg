@@ -1,4 +1,4 @@
-# openconnectsg 서브커맨드 메뉴얼 (Subcommand Manual)
+# openconnectsg Subcommand Manual
 
 `openconnectsg` CLI 도구에서 지원하는 모든 서브커맨드의 구문, 파라미터, 동작 정책 및 실행 예시를 정리한 사용자 메뉴얼입니다.
 
@@ -6,9 +6,9 @@
 
 ---
 
-## 1. 개요 및 구문 규칙
+## 1. Overview and Syntax Rules
 
-### 기본 문법
+### Basic Syntax
 
 ```
 openconnectsg <서브커맨드> [인자1] [인자2] ...
@@ -23,7 +23,7 @@ openconnectsg <서브커맨드> [인자1] [인자2] ...
 
 ---
 
-## 2. 프로필 식별자(`profile`) 지정 규칙
+## 2. Profile Identifier (`profile`) Specification Rules
 
 서브커맨드에서 대상 프로필을 지정할 때 다음 4가지 식별자 중 하나를 유연하게 사용할 수 있습니다.
 
@@ -34,7 +34,7 @@ openconnectsg <서브커맨드> [인자1] [인자2] ...
 | **계정명 (User)** | VPN 로그인 시 사용되는 계정명(`user.txt`) | `user01`, `admin` |
 | **서비스명 부분 일치** | NSSM 서비스 이름의 일부 문자열 | `443`, `203.0.113` |
 
-### 식별자 해석 우선순위
+### Identifier Resolution Precedence
 1. 입력값이 숫자인 경우 $\rightarrow$ **번호(Index)** 일치 우선
 2. **별칭(Alias)** 정확 일치
 3. **계정명(User)** 정확 일치
@@ -44,9 +44,9 @@ openconnectsg <서브커맨드> [인자1] [인자2] ...
 
 ---
 
-## 3. 서브커맨드 상세 레퍼런스
+## 3. Detailed Subcommand Reference
 
-### 3.1. `list` / `ls` (프로필 목록 조회)
+### 3.1. `list` / `ls` (List Profiles)
 
 등록되어 있는 모든 VPN 프로필과 현재 연결 상태를 표 형태로 출력합니다.
 
@@ -81,7 +81,7 @@ openconnectsg <서브커맨드> [인자1] [인자2] ...
 
 ---
 
-### 3.2. `status` (프로필 상태 상세 확인)
+### 3.2. `status` (Detailed Profile Status)
 
 지정한 프로필의 서비스명, 계정, 서버, 별칭, 하트비트 수신 상태 및 최근 오류 로그를 확인합니다.
 
@@ -119,7 +119,7 @@ openconnectsg <서브커맨드> [인자1] [인자2] ...
 
 ---
 
-### 3.3. `connect` / `up` / `start` (VPN 연결)
+### 3.3. `connect` / `up` / `start` (VPN Connect)
 
 선택한 프로필로 VPN 터널 연결을 시작합니다.
 
@@ -174,7 +174,7 @@ openconnectsg <서브커맨드> [인자1] [인자2] ...
 
 ---
 
-### 3.4. `disconnect` / `down` / `stop` (VPN 연결 해제)
+### 3.4. `disconnect` / `down` / `stop` (VPN Disconnect)
 
 지정한 프로필 또는 실행 중인 모든 VPN 연결을 안전하게 해제합니다.
 
@@ -206,7 +206,7 @@ openconnectsg <서브커맨드> [인자1] [인자2] ...
 
 ---
 
-### 3.5. `setup` / `add` (새 프로필 등록 마법사)
+### 3.5. `setup` / `add` (New Profile Setup Wizard)
 
 새로운 VPN 접속 정보를 대화형으로 입력받아 서비스 및 자격증명을 안전하게 등록합니다.
 
@@ -232,7 +232,7 @@ openconnectsg <서브커맨드> [인자1] [인자2] ...
 
 ---
 
-### 3.6. `alias` / `label` (별칭 부여)
+### 3.6. `alias` / `label` (Assign Profile Alias)
 
 프로필을 번호나 복잡한 서비스명 대신 짧은 단어로 호출할 수 있도록 별칭(Alias)을 부여합니다.
 
@@ -261,7 +261,7 @@ openconnectsg <서브커맨드> [인자1] [인자2] ...
 
 ---
 
-### 3.7. `default` (기본 프로필 설정)
+### 3.7. `default` (Set Default Profile)
 
 기본 프로필 포인터(`profiles/default.txt`)를 수동으로 지정합니다.
 
@@ -285,7 +285,7 @@ openconnectsg <서브커맨드> [인자1] [인자2] ...
 
 ---
 
-### 3.8. `remove` / `rm` / `delete` (프로필 및 서비스 삭제)
+### 3.8. `remove` / `rm` / `delete` (Delete Profile & Service)
 
 등록된 프로필 구성 및 윈도우 서비스를 완전히 삭제합니다.
 
@@ -330,7 +330,7 @@ openconnectsg <서브커맨드> [인자1] [인자2] ...
 
 ---
 
-### 3.9. `uninstall` / `un` / `purge` (도구 및 의존성 삭제)
+### 3.9. `uninstall` / `un` / `purge` (Remove Tool & Dependencies)
 
 등록된 모든 VPN 터널과 서비스를 중지 및 해제하고, 사용자가 선택한 범위에 따라 `openconnectsg` 또는 OpenConnect CLI/NSSM을 삭제합니다.
 
@@ -381,7 +381,7 @@ openconnectsg <서브커맨드> [인자1] [인자2] ...
 
 ---
 
-### 3.10. `upgrade` / `update` (시스템 업그레이드)
+### 3.10. `upgrade` / `update` (System Upgrade)
 
 설치된 `openconnectsg` 바이너리를 최신 버전으로 갱신하고, 변경 사항이 있을 경우 실행 중인 터널 서비스를 동기화합니다. 이미 최신 버전인 경우 터널 중단 없이 업그레이드를 건너뜁니다.
 
@@ -434,7 +434,7 @@ openconnectsg <서브커맨드> [인자1] [인자2] ...
 
 ---
 
-### 3.11. `version` (버전 및 시스템 정보 확인)
+### 3.11. `version` (Check Version & System Information)
 
 현재 설치된 `openconnectsg`의 버전 및 저장소, 설치 경로 정보를 확인합니다.
 
@@ -465,7 +465,7 @@ openconnectsg <서브커맨드> [인자1] [인자2] ...
 
 ---
 
-### 3.12. `banner` (웰컴 아스키 배너 표시)
+### 3.12. `banner` (Display Welcome ASCII Banner)
 
 `openconnectsg` 공식 Slant ASCII Figlet 웰컴 배너를 출력합니다.
 
@@ -476,7 +476,7 @@ openconnectsg <서브커맨드> [인자1] [인자2] ...
 
 ---
 
-### 3.13. `help` (도움말 표시)
+### 3.13. `help` (Display Help)
 
 전체 서브커맨드 요약 안내문과 아스키 배너를 출력합니다.
 
