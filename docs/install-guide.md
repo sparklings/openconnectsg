@@ -23,7 +23,7 @@
 ## 2. Prerequisites
 
 ### 2.1. Run PowerShell as Administrator
-설치 스크립트는 시스템 `Program Files` 디렉터리에 접근하고 머신 환경 변수를 수정하므로 반드시 **관리자 권한**으로 실행해야 합니다.
+설치 스크립트는 시스템 `Program Files` 디렉터리에 접근하고 머신 환경 변수를 수정하므로 반드시 **관리자 권한** 으로 실행해야 합니다.
 
 1. `시작` 메뉴 우클릭 $\rightarrow$ **Windows 터미널(관리자)** 또는 **PowerShell(관리자)** 선택
 2. PowerShell 버전 확인:
@@ -113,7 +113,7 @@ powershell -ExecutionPolicy Bypass -File .\install\install-openconnectsg.ps1 -Sk
 
 Windows는 설치 프로그램(자식 프로세스)이 시스템 PATH를 변경해도 **이미 열려 있는 기존 터미널 세션에는 새 PATH가 자동으로 갱신되지 않습니다**.
 
-* **선택 1 (권장):** **새 PowerShell 창**을 열면 `openconnectsg` 명령어가 즉시 인식됩니다.
+* **선택 1 (권장):** **새 PowerShell 창** 을 열면 `openconnectsg` 명령어가 즉시 인식됩니다.
 * **선택 2:** 현재 열려 있는 창에서 바로 사용하려면 아래 명령어로 환경 변수를 즉시 다시 로드합니다:
   ```powershell
   $env:Path = [Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' + [Environment]::GetEnvironmentVariable('Path', 'User')

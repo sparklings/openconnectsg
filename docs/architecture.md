@@ -1,12 +1,12 @@
 # System Architecture and Core Design
 
-본 문서는 **OpenConnectSg**의 시스템 아키텍처, 프로세스 생명주기(Lifecycle), Windows 서비스 데몬 오케스트레이션, 그리고 커널 수준의 네트워크 터널 형성 원리를 상세히 기술합니다.
+본 문서는 **OpenConnectSg** 의 시스템 아키텍처, 프로세스 생명주기(Lifecycle), Windows 서비스 데몬 오케스트레이션, 그리고 커널 수준의 네트워크 터널 형성 원리를 상세히 기술합니다.
 
 ---
 
 ## 1. System Overview and Design Philosophy
 
-OpenConnectSg는 독립적인 VPN 클라이언트가 아니며, Windows 환경에서 공식 **`openconnect.exe` (MinGW64-GnuTLS)** CLI를 백그라운드 Windows 서비스로 오케스트레이션하는 **PowerShell 래퍼 및 관리 프레임워크**입니다.
+OpenConnectSg는 독립적인 VPN 클라이언트가 아니며, Windows 환경에서 공식 **`openconnect.exe` (MinGW64-GnuTLS)** CLI를 백그라운드 Windows 서비스로 오케스트레이션하는 **PowerShell 래퍼 및 관리 프레임워크** 입니다.
 
 ### Core Design Principles
 * **Zero Console Window**: 콘솔 창을 상시 띄워두지 않고 Windows 백그라운드 서비스(NSSM)로 안전하게 격리 구동.

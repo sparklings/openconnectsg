@@ -15,7 +15,7 @@
 
 ## 1. Overview and Design Purpose
 
-`openconnectsg`는 Windows 환경에서 공식 [OpenConnect](https://www.infradead.org/openconnect/)(`openconnect.exe`) CLI 도구를 백그라운드 Windows 서비스(NSSM)로 구동하고 프로필 관리를 보조하기 위해 작성된 **PowerShell 래퍼(Wrapper) 프레임워크**입니다.
+`openconnectsg`는 Windows 환경에서 공식 [OpenConnect](https://www.infradead.org/openconnect/)(`openconnect.exe`) CLI 도구를 백그라운드 Windows 서비스(NSSM)로 구동하고 프로필 관리를 보조하기 위해 작성된 **PowerShell 래퍼(Wrapper) 프레임워크** 입니다.
 
 ### Key Features
 - **DPAPI 비밀번호 암호화**: `LocalMachine` 스코프로 안전하게 보호된 암호 바이트(`pw.bin`) 저장.

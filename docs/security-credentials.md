@@ -1,6 +1,6 @@
 # Security & Credentials Specification
 
-본 문서는 **OpenConnectSg**에서 자격 증명(비밀번호, 인증서 지문)을 안전하게 암호화·보관하고, 권한을 제어하는 보안 아키텍처 및 구현 명세를 기술합니다.
+본 문서는 **OpenConnectSg** 에서 자격 증명(비밀번호, 인증서 지문)을 안전하게 암호화·보관하고, 권한을 제어하는 보안 아키텍처 및 구현 명세를 기술합니다.
 
 ---
 
@@ -62,7 +62,7 @@ $sw.Flush()
 
 ## 3. File System Access Control (ACL Locking)
 
-`LocalMachine` 스코프로 암호화된 파일은 동일 PC의 다른 관리자 권한 프로세스에서도 이론적으로 복호화가 가능하므로, **파일 시스템 권한을 엄격히 제한**합니다.
+`LocalMachine` 스코프로 암호화된 파일은 동일 PC의 다른 관리자 권한 프로세스에서도 이론적으로 복호화가 가능하므로, **파일 시스템 권한을 엄격히 제한** 합니다.
 
 `init-openconnectsg.ps1`는 `pw.bin` 생성 즉시 Windows `icacls.exe`를 호출하여 상속 권한을 제거하고 허용 대상을 제한합니다:
 
