@@ -10,6 +10,7 @@ Desktop.ini
 # VS Code & JetBrains
 .vscode/
 .idea/
+OpenConnectSq.code-workspace
 
 # Security and Credentials
 *.bin
