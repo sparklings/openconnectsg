@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.1.3b] - 2026-11-04
+
+### Fixed
+- **Port Argument Type Binding in `Detect-VpnGateway`**: Wrapped `-Port ([int]$vpnPort)` in explicit expression parentheses to prevent PowerShell parameter binder from interpreting `[int]443` as an invalid string literal during setup.
+
+---
+
 ## [v0.1.3a] - 2026-11-04
 
 ### Added

@@ -84,7 +84,7 @@ powershell -ExecutionPolicy Bypass -File .\install\install-openconnectsg.ps1 -Sk
 \____/ .___/\___/_/ /_/\____/\____/_/ /_/_/ /_/\___/\___/\__/  /____/\__, /   
     /_/                                                             /____/    
  ==============================================================================
-  OpenConnectSg :: Windows Background Daemon & DPAPI Automation Wrapper (v0.1.3a)
+  OpenConnectSg :: Windows Background Daemon & DPAPI Automation Wrapper (v0.1.3b)
  ==============================================================================
   [DEPLOY]   Target   : C:\Program Files\OpenConnect\bin
   [SYSTEM]   PATH     : Successfully registered (Machine Scope)

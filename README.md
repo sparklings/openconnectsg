@@ -9,7 +9,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Platform: Windows](https://img.shields.io/badge/Platform-Windows%2010%2F11%2FServer-blue.svg)]()
 [![Shell: PowerShell 5.1+](https://img.shields.io/badge/PowerShell-5.1%2B-blue.svg)]()
-[![Version: v0.1.3a](https://img.shields.io/badge/Version-v0.1.3a-green.svg)](CHANGELOG.md)
+[![Version: v0.1.3b](https://img.shields.io/badge/Version-v0.1.3b-green.svg)](CHANGELOG.md)
 
 ---
 
@@ -37,7 +37,7 @@
 | **DPAPI 심층 기술 가이드** | `.NET ProtectedData`<br>`pw.bin` | [DPAPI 심층 기술 가이드](docs/dpapi-technical-guide.md)<br>DPAPI 키 도출 구조, LocalMachine 스코프, 무인 데몬 주입 설계 |
 | **icacls 접근 제어 가이드** | `icacls.exe`<br>`NTFS DACL` | [icacls 접근 제어 가이드](docs/icacls-technical-guide.md)<br>NTFS 보안 모델, 상속 완전 차단(/inheritance:r), Well-Known SID 하드닝 |
 | **장애 진단 및 트러블슈팅** | `profiles/<service>/logs/*` | [장애 진단 및 문제 해결 가이드](docs/troubleshooting.md)<br>로그 분석법, Wintun 어댑터 0x102 타임아웃 해결, 계정 잠금 대응 |
-| **버전 및 변경 이력** | 전체 프로젝트 리포지토리 | [변경 이력 (CHANGELOG.md)](CHANGELOG.md)<br>버전별(v0.1.0 ~ v0.1.3a) 추가/수정/보안 패치 및 산출물 추적 |
+| **버전 및 변경 이력** | 전체 프로젝트 리포지토리 | [변경 이력 (CHANGELOG.md)](CHANGELOG.md)<br>버전별(v0.1.0 ~ v0.1.3b) 추가/수정/보안 패치 및 산출물 추적 |
 
 ---
 
@@ -86,7 +86,7 @@ openconnectsg disconnect all       # 모든 활성 VPN 연결 해제
 | `openconnectsg remove <p>` | `rm`, `delete` | 프로필 구성 삭제 및 Windows 서비스 영구 등록 해제 |
 | `openconnectsg upgrade [<p>]` | `update` | 최신 소스로 바이너리 업그레이드 및 버전 검증 (`--force` 지원) |
 | `openconnectsg uninstall [<s\>]` | `un`, `purge` | 도구 제거 (범위: `app` 앱 전용 삭제, `full` 전체 완전 삭제) |
-| `openconnectsg version` | `-v` | 현재 버전 및 시스템 정보 출력 (`0.1.3a`) |
+| `openconnectsg version` | `-v` | 현재 버전 및 시스템 정보 출력 (`0.1.3b`) |
 | `openconnectsg banner` | - | 웰컴 Slant ASCII Figlet 배너 출력 |
 | `openconnectsg help` | `-h` | CLI 도움말 및 배너 출력 |
 
@@ -94,7 +94,7 @@ openconnectsg disconnect all       # 모든 활성 VPN 연결 해제
 
 ---
 
-## Latest Release Information (v0.1.3a)
+## Latest Release Information (v0.1.3b)
 
 * **멀티 벤더 자동 감지 (Cisco AnyConnect & Fortinet SSL-VPN)**: `openconnectsg setup` 실행 시 게이트웨이 주소만 입력하면 TLS 인증서, HTTP 헤더/쿠키, 리다이렉트 응답을 분석하여 Cisco 및 Fortinet 게이트웨이를 자동 감지하고 최적 프로필을 구성합니다.
 * **Cisco 터널 그룹(AuthGroup) 자동 탐색**: Cisco WebVPN 로그온 포털에서 운영 중인 터널 그룹 목록을 탐색하여 손쉽게 선택할 수 있도록 지원합니다.

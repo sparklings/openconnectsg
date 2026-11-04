@@ -1,7 +1,7 @@
 ﻿#Requires -RunAsAdministrator
 <#
 .SYNOPSIS
-  openconnectsg profile setup wizard (invoked by 'openconnectsg setup', v0.1.3a)
+  openconnectsg profile setup wizard (invoked by 'openconnectsg setup', v0.1.3b)
 .DESCRIPTION
   Interactive wizard that prompts for remote VPN host, port, credentials,
   verifies binary dependencies with cryptographic checksums, encrypts credentials via DPAPI,
@@ -146,7 +146,7 @@ Write-Host "/ /_/ / /_/ /  __/ / / / /___/ /_/ / / / / / / /  __/ /__/ /_   ___/
 Write-Host "\____/ .___/\___/_/ /_/\____/\____/_/ /_/_/ /_/\___/\___/\__/  /____/\__, /   " -ForegroundColor Cyan
 Write-Host "    /_/                                                             /____/    " -ForegroundColor Cyan
 Write-Host " ==============================================================================" -ForegroundColor DarkGray
-Write-Host "  OpenConnectSg :: Interactive Setup Wizard (v0.1.3a)" -ForegroundColor White
+Write-Host "  OpenConnectSg :: Interactive Setup Wizard (v0.1.3b)" -ForegroundColor White
 Write-Host " ==============================================================================" -ForegroundColor DarkGray
 Write-Host ""
 
