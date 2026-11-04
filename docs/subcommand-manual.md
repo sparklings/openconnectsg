@@ -418,7 +418,7 @@ openconnectsg <서브커맨드> [인자1] [인자2] ...
   \____/ .___/\___/_/ /_/\____/\____/_/ /_/_/ /_/\___/\___/\__/  /____/\__, /   
       /_/                                                             /____/    
    ==============================================================================
-    OpenConnectSg :: System Upgrade & Maintenance (v0.1.2d)
+    OpenConnectSg :: System Upgrade & Maintenance (v0.1.3b)
    ==============================================================================
 
    [Step 1/3] Fetching latest release package...
@@ -431,11 +431,11 @@ openconnectsg <서브커맨드> [인자1] [인자2] ...
    [Step 2/3] Deploying updated binaries...
 
      Target Directory  : C:\Program Files\OpenConnect\bin
-     Target Version    : openconnectsg 0.1.2d (Current: 0.1.2d)
+     Target Version    : openconnectsg 0.1.3b (Current: 0.1.2d)
      Status            : Already up to date. No upgrade required.
 
    ==============================================================================
-    Already up to date! (openconnectsg 0.1.2d)
+    Already up to date! (openconnectsg 0.1.3b)
     No changes were made to binaries or active background services.
    ==============================================================================
   ```
@@ -461,10 +461,10 @@ openconnectsg <서브커맨드> [인자1] [인자2] ...
   \____/ .___/\___/_/ /_/\____/\____/_/ /_/_/ /_/\___/\___/\__/  /____/\__, /   
       /_/                                                             /____/    
    ==============================================================================
-    OpenConnectSg :: System & Version Information (v0.1.2d)
+    OpenConnectSg :: System & Version Information (v0.1.3b)
    ==============================================================================
 
-    Version       : openconnectsg 0.1.2d
+    Version       : openconnectsg 0.1.3b
     Binary Path   : C:\Program Files\OpenConnect\bin
     Profiles Path : C:\Program Files\OpenConnect\profiles
     Repository    : https://github.com/sparklings/openconnectsg

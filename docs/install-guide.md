@@ -122,7 +122,7 @@ Windows는 설치 프로그램(자식 프로세스)이 시스템 PATH를 변경�
 ### 4.3. Verify Installation
 ```powershell
 openconnectsg version
-# 출력: openconnectsg 0.1.2d
+# 출력: openconnectsg 0.1.3b
 ```
 
 ### 4.4. Run Initial Profile Setup Wizard

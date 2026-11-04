@@ -21,9 +21,9 @@
 #>
 [CmdletBinding()]
 param(
-  [string]$RepoUrl,
-  [string]$Dest = 'C:\Program Files\OpenConnect\repo',
-  [string]$BinDir = 'C:\Program Files\OpenConnect\bin',
+  [string]$RepoUrl = 'https://github.com/sparklings/openconnectsg.git',
+  [string]$Dest,
+  [string]$BinDir,
   [switch]$SkipClone,
   [string]$SourceDir,
   [switch]$Uninstall,
@@ -32,6 +32,11 @@ param(
 $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $OutputEncoding = [System.Text.Encoding]::UTF8
+
+$programFiles = if ([string]::IsNullOrWhiteSpace($env:ProgramFiles)) { 'C:\Program Files' } else { $env:ProgramFiles }
+$ocRoot       = Join-Path $programFiles 'OpenConnect'
+if ([string]::IsNullOrWhiteSpace($Dest))   { $Dest = Join-Path $ocRoot 'repo' }
+if ([string]::IsNullOrWhiteSpace($BinDir)) { $BinDir = Join-Path $ocRoot 'bin' }
 
 if ($Uninstall) {
   $targetPs1 = Join-Path $BinDir 'openconnectsg.ps1'
@@ -121,7 +126,14 @@ if (-not (($mp -split ';') -contains $BinDir)) {
 # Verification and installation marker
 $cmd = Join-Path $BinDir 'openconnectsg.cmd'
 if (Test-Path $cmd) {
-  $ver = '0.1.2d'
+  $deployedPs1 = Join-Path $BinDir 'openconnectsg.ps1'
+  $ver = '0.1.3b'
+  if (Test-Path $deployedPs1) {
+    $vLine = Get-Content $deployedPs1 -ErrorAction SilentlyContinue | Where-Object { $_ -match '^\$script:Version\s*=\s*[''"]([^''"]+)[''"]' } | Select-Object -First 1
+    if ($vLine -and $vLine -match '^\$script:Version\s*=\s*[''"]([^''"]+)[''"]') {
+      $ver = $matches[1]
+    }
+  }
   $marker = "version=$ver`r`nsource=$SourceDir`r`ninstalled=$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')`r`n"
   [System.IO.File]::WriteAllText((Join-Path $BinDir '.installed'), $marker, (New-Object System.Text.UTF8Encoding($false)))
   Write-Host "Installed openconnectsg $ver."
@@ -136,7 +148,7 @@ if (Test-Path $cmd) {
 
 # Detect dependency versions if installed
 $detectedNssm = 'Pending Setup'
-$nssmPath = 'C:\Program Files\nssm\nssm.exe'
+$nssmPath = Join-Path (Join-Path $programFiles 'nssm') 'nssm.exe'
 if (Test-Path $nssmPath) {
   try {
     $vi = (Get-Item $nssmPath).VersionInfo.ProductVersion
@@ -145,7 +157,7 @@ if (Test-Path $nssmPath) {
 }
 
 $detectedOc = 'Pending Setup'
-$ocPath = 'C:\Program Files\OpenConnect\openconnect.exe'
+$ocPath = Join-Path $ocRoot 'openconnect.exe'
 if (Test-Path $ocPath) {
   try {
     $rawOcVer = (& $ocPath --version 2>&1 | Select-Object -First 1)
