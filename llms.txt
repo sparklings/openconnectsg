@@ -15,6 +15,7 @@
 3. **Fingerprint Pinning (RFC 7469)**: Automatically captures and pins self-signed server certificate hashes (`pin-sha256`) to securely bypass untrusted CA warnings without disabling TLS verification.
 4. **Single-Tunnel Enforcement**: Automatically disconnects other active tunnels when initiating a new connection to avoid routing conflicts.
 5. **Unified Daemon Runner**: Executes directly via `openconnectsg.ps1 service-run <service_name>` under NSSM, eliminating temporary dynamic wrapper scripts.
+6. **Multi-Vendor Auto-Detection**: Automatically classifies Cisco AnyConnect and Fortinet SSL-VPN gateways through network, TLS cert, and HTTP signatures, with dynamic Cisco tunnel group (`authgroup`) discovery.
 
 ## File Hierarchy
 - `src/openconnectsg.ps1`: Primary CLI dispatcher and NSSM service daemon runner.

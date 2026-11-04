@@ -1,7 +1,7 @@
 ﻿#Requires -RunAsAdministrator
 <#
 .SYNOPSIS
-  openconnectsg profile setup wizard (invoked by 'openconnectsg setup', v0.1.1b)
+  openconnectsg profile setup wizard (invoked by 'openconnectsg setup', v0.1.3a)
 .DESCRIPTION
   Interactive wizard that prompts for remote VPN host, port, credentials,
   verifies binary dependencies with cryptographic checksums, encrypts credentials via DPAPI,
@@ -23,6 +23,121 @@ if ($PSVersionTable.PSVersion.Major -lt 5) {
 function Write-Step { param([string]$Text) Write-Host ("-" * 40); Write-Host $Text }
 function Write-Gap  { 1..2 | ForEach-Object { Write-Host "" } }
 
+function Detect-VpnGateway {
+  param(
+    [string]$HostName,
+    [int]$Port = 443
+  )
+
+  $result = [pscustomobject]@{
+    Vendor     = "Generic"
+    Protocol   = "anyconnect"
+    Confidence = "Low"
+    Groups     = @()
+  }
+
+  $url = "https://${HostName}:${Port}"
+
+  # 1. TLS Certificate Check
+  try {
+    $tcp = New-Object System.Net.Sockets.TcpClient
+    $ar = $tcp.BeginConnect($HostName, $Port, $null, $null)
+    if ($ar.AsyncWaitHandle.WaitOne(4000)) {
+      $tcp.EndConnect($ar)
+      $ssl = New-Object System.Net.Security.SslStream($tcp.GetStream(), $false, { $true })
+      $ssl.AuthenticateAsClient($HostName)
+      $cert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2($ssl.RemoteCertificate)
+      $certSubj = "$($cert.Subject) $($cert.Issuer)"
+      $ssl.Close()
+      $tcp.Close()
+
+      if ($certSubj -match 'Fortinet|FortiGate') {
+        $result.Vendor = "Fortinet"
+        $result.Protocol = "fortinet"
+        $result.Confidence = "High"
+      } elseif ($certSubj -match 'firepower|cisco|asa') {
+        $result.Vendor = "Cisco"
+        $result.Protocol = "anyconnect"
+        $result.Confidence = "High"
+      }
+    }
+  } catch {}
+
+  # 2. HTTP Probing
+  try {
+    $req = [System.Net.HttpWebRequest]::Create($url)
+    $req.Timeout = 4000
+    $req.AllowAutoRedirect = $false
+    $req.UserAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) OpenConnectSg'
+    $resp = $null
+    try {
+      $resp = $req.GetResponse()
+    } catch [System.Net.WebException] {
+      $resp = $_.Exception.Response
+    }
+
+    if ($resp) {
+      $headers = $resp.Headers
+      $cookies = $headers['Set-Cookie']
+      $location = $headers['Location']
+
+      if ($cookies -match 'webvpn|samlPreauthSessionHash|acSamlv2Error' -or $location -match '\+CSCOE\+|\+CSCOT\+') {
+        $result.Vendor = "Cisco"
+        $result.Protocol = "anyconnect"
+        $result.Confidence = "High"
+      } elseif ($cookies -match 'SVPNCOOKIE|SVPNNETWORKCOOKIE' -or $location -match '/remote/login') {
+        $result.Vendor = "Fortinet"
+        $result.Protocol = "fortinet"
+        $result.Confidence = "High"
+      } else {
+        try {
+          $reader = New-Object System.IO.StreamReader($resp.GetResponseStream())
+          $body = $reader.ReadToEnd()
+          $reader.Close()
+          if ($body -match '\+CSCOE\+|document\.cookie\s*=\s*"tg=') {
+            $result.Vendor = "Cisco"
+            $result.Protocol = "anyconnect"
+            $result.Confidence = "High"
+          } elseif ($body -match '/remote/login|top\.location="/remote/login"') {
+            $result.Vendor = "Fortinet"
+            $result.Protocol = "fortinet"
+            $result.Confidence = "High"
+          }
+        } catch {}
+      }
+      $resp.Close()
+    }
+  } catch {}
+
+  # 3. Tunnel Groups Probing (for Cisco)
+  if ($result.Vendor -eq "Cisco") {
+    try {
+      $logonUrl = "https://${HostName}:${Port}/+CSCOE+/logon.html"
+      $req = [System.Net.HttpWebRequest]::Create($logonUrl)
+      $req.Timeout = 4000
+      $req.UserAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) OpenConnectSg'
+      $resp = $req.GetResponse()
+      $reader = New-Object System.IO.StreamReader($resp.GetResponseStream())
+      $html = $reader.ReadToEnd()
+      $reader.Close()
+      $resp.Close()
+
+      $matches = [regex]::Matches($html, '<option[^>]*value="([^"]+)"[^>]*>([^<]+)</option>')
+      $groups = @()
+      foreach ($m in $matches) {
+        $val = [System.Net.WebUtility]::HtmlDecode($m.Groups[2].Value.Trim())
+        if (-not $val) { $val = [System.Net.WebUtility]::HtmlDecode($m.Groups[1].Value.Trim()) }
+        $val = $val -replace '&#x5F;', '_' -replace '&#x2D;', '-' -replace '&amp;', '&'
+        if ($val -and $val -notin $groups) { $groups += $val }
+      }
+      $result.Groups = $groups
+    } catch {}
+  }
+
+  return $result
+}
+
+
 Write-Host ""
 Write-Host "   ____                   ______                            __   _____       " -ForegroundColor Cyan
 Write-Host "  / __ \____  ___  ____  / ____/___  ____  ____  ___  _____/ /_ / ___/____ _ " -ForegroundColor Cyan
@@ -31,7 +146,7 @@ Write-Host "/ /_/ / /_/ /  __/ / / / /___/ /_/ / / / / / / /  __/ /__/ /_   ___/
 Write-Host "\____/ .___/\___/_/ /_/\____/\____/_/ /_/_/ /_/\___/\___/\__/  /____/\__, /   " -ForegroundColor Cyan
 Write-Host "    /_/                                                             /____/    " -ForegroundColor Cyan
 Write-Host " ==============================================================================" -ForegroundColor DarkGray
-Write-Host "  OpenConnectSg :: Interactive Setup Wizard" -ForegroundColor White
+Write-Host "  OpenConnectSg :: Interactive Setup Wizard (v0.1.3a)" -ForegroundColor White
 Write-Host " ==============================================================================" -ForegroundColor DarkGray
 Write-Host ""
 
@@ -41,6 +156,56 @@ if ([string]::IsNullOrWhiteSpace($vpnHost)) { throw "VPN Server Address is requi
 $portInput = Read-Host "Remote VPN Server Port [443]"
 if ([string]::IsNullOrWhiteSpace($portInput)) { $vpnPort = "443" } else { $vpnPort = $portInput.Trim() }
 if ($vpnPort -notmatch '^\d+$' -or [int]$vpnPort -lt 1 -or [int]$vpnPort -gt 65535) { throw "Invalid port: $vpnPort" }
+# Probing vendor signatures
+Write-Host "Probing VPN gateway signatures at https://${vpnHost}:${vpnPort}..." -ForegroundColor Cyan
+$detected = Detect-VpnGateway -HostName $vpnHost -Port ([int]$vpnPort)
+
+if ($detected.Vendor -eq "Cisco") {
+  Write-Host "  Detected Gateway : Cisco AnyConnect / Firepower (Confidence: $($detected.Confidence))" -ForegroundColor Green
+  $defaultChoice = "1"
+} elseif ($detected.Vendor -eq "Fortinet") {
+  Write-Host "  Detected Gateway : Fortinet FortiGate SSL-VPN (Confidence: $($detected.Confidence))" -ForegroundColor Green
+  $defaultChoice = "2"
+} else {
+  Write-Host "  Detected Gateway : Generic / Undetermined" -ForegroundColor Yellow
+  $defaultChoice = "1"
+}
+
+Write-Host ""
+Write-Host "Select VPN Vendor / Protocol:"
+Write-Host "  [1] Cisco AnyConnect $(if ($detected.Vendor -eq 'Cisco') { '(Auto-detected)' })"
+Write-Host "  [2] Fortinet SSL-VPN $(if ($detected.Vendor -eq 'Fortinet') { '(Auto-detected)' })"
+Write-Host "  [3] Other (Standard AnyConnect protocol)"
+
+$choiceInput = (Read-Host "Select vendor [$defaultChoice]").Trim()
+$choice = if ([string]::IsNullOrWhiteSpace($choiceInput)) { $defaultChoice } else { $choiceInput }
+
+$vpnProto = 'anyconnect'
+$vpnVendor = 'Cisco'
+if ($choice -eq '2') {
+  $vpnProto = 'fortinet'
+  $vpnVendor = 'Fortinet'
+} elseif ($choice -eq '3') {
+  $vpnProto = 'anyconnect'
+  $vpnVendor = 'Other'
+} else {
+  $vpnProto = 'anyconnect'
+  $vpnVendor = 'Cisco'
+}
+
+$vpnGroup = ""
+if ($vpnProto -eq 'anyconnect') {
+  if ($detected.Groups -and $detected.Groups.Count -gt 0) {
+    Write-Host ""
+    Write-Host "Discovered Tunnel Groups: $(($detected.Groups) -join ', ')" -ForegroundColor Cyan
+    $defGrp = if ($detected.Groups -contains 'DC_Network') { 'DC_Network' } else { $detected.Groups[0] }
+    $grpInput = (Read-Host "VPN Group / AuthGroup (leave blank if none) [$defGrp]").Trim()
+    $vpnGroup = if ([string]::IsNullOrWhiteSpace($grpInput)) { $defGrp } else { $grpInput }
+  } else {
+    $vpnGroup = (Read-Host "VPN Group / AuthGroup (leave blank if none)").Trim()
+  }
+}
+
 $vpnUser = (Read-Host "User Account Name").Trim()
 if ([string]::IsNullOrWhiteSpace($vpnUser)) { throw "User Account is required." }
 $ss = Read-Host "Password (masked input)" -AsSecureString
@@ -129,8 +294,12 @@ Write-Gap
 # 4) Write Profile Metadata
 Write-Step "[4/7] Writing profile configuration ($svcName)..."
 Set-Content (Join-Path $root "default.txt") $svcName -NoNewline -Encoding ascii
-  "protocol=fortinet", "server=$serverUrl", "user=$vpnUser", "no-dtls" | Set-Content (Join-Path $dir "openconnect.conf") -Encoding ascii
+$confLines = @("protocol=$vpnProto", "server=$serverUrl", "user=$vpnUser")
+if ($vpnGroup) { $confLines += "authgroup=$vpnGroup" }
+if ($vpnProto -eq 'fortinet') { $confLines += "no-dtls" }
+$confLines | Set-Content (Join-Path $dir "openconnect.conf") -Encoding ascii
 Set-Content (Join-Path $dir "user.txt") $vpnUser -NoNewline -Encoding ascii
+if ($vpnGroup) { Set-Content (Join-Path $dir "group.txt") $vpnGroup -NoNewline -Encoding ascii }
 Write-Gap
 
 # 5) Encrypt Password via DPAPI LocalMachine
@@ -262,7 +431,7 @@ if ([string]::IsNullOrWhiteSpace($pin) -and (Test-Path $ocExe)) {
   try {
     $psi = New-Object System.Diagnostics.ProcessStartInfo
     $psi.FileName = $ocExe
-    $psi.Arguments = "--protocol=fortinet -u probe $serverUrl"
+    $psi.Arguments = "--protocol=$vpnProto -u probe $serverUrl"
     $psi.UseShellExecute = $false
     $psi.RedirectStandardInput = $true
     $psi.RedirectStandardOutput = $true
@@ -309,7 +478,10 @@ if ([string]::IsNullOrWhiteSpace($pin)) {
 if ($pin -notmatch '^pin-sha256:[A-Za-z0-9+/]{40,}={0,2}$') { throw "Invalid certificate pin format: $pin" }
 Write-Host "Server certificate pin: $pin"
 Set-Content (Join-Path $dir "pin.txt") $pin -NoNewline -Encoding ascii
-  "protocol=fortinet", "server=$serverUrl", "user=$vpnUser", "servercert=$pin", "no-dtls" | Set-Content (Join-Path $dir "openconnect.conf") -Encoding ascii
+$confLines = @("protocol=$vpnProto", "server=$serverUrl", "user=$vpnUser", "servercert=$pin")
+if ($vpnGroup) { $confLines += "authgroup=$vpnGroup" }
+if ($vpnProto -eq 'fortinet') { $confLines += "no-dtls" }
+$confLines | Set-Content (Join-Path $dir "openconnect.conf") -Encoding ascii
 Write-Gap
 
 # 7) Register NSSM Managed Windows Service

@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.1.3a] - 2026-11-04
+
+### Added
+- **Multi-Vendor Gateway Signature Auto-Detection (`Detect-VpnGateway`)**:
+  - Implemented automatic classification of VPN gateways (Cisco AnyConnect / Firepower / ASA vs Fortinet FortiGate SSL-VPN) during `openconnectsg setup`.
+  - Probes TLS certificate subjects/issuers, HTTP response headers, session cookies (`webvpn`, `samlPreauthSessionHash`, `SVPNCOOKIE`), redirect locations (`+CSCOE+`, `/remote/login`), and HTML payloads with zero prior user input.
+- **Cisco Tunnel Group (`authgroup`) Discovery**:
+  - Automatically queries and extracts available authentication groups from Cisco WebVPN logon portals (`/+CSCOE+/logon.html`) and OpenConnect authentication negotiation probes.
+  - Dynamically prompts user with discovered tunnel groups (e.g. `APEX`, `DC_Network`, `Lab-ACI`, etc.).
+- **Interactive Multi-Vendor Setup Flow**:
+  - Integrated vendor selection in `init-openconnectsg.ps1` defaulting to auto-detected gateway with high confidence.
+  - Automatically writes protocol-specific directives (`protocol=anyconnect` with optional `authgroup`, or `protocol=fortinet` with `no-dtls`) into `openconnect.conf`.
+- **Protocol & AuthGroup Visibility**:
+  - Extended profile metadata model in `openconnectsg.ps1` (`Get-Profiles`) to parse `protocol` and `authgroup`.
+  - Added `PROTO` column to `openconnectsg list` table.
+  - Added `Protocol` and `AuthGroup` fields to `openconnectsg status <profile>`.
+
+---
+
 ## [v0.1.2d] - 2026-10-24
 
 ### Added

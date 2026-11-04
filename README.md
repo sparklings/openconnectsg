@@ -9,12 +9,14 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Platform: Windows](https://img.shields.io/badge/Platform-Windows%2010%2F11%2FServer-blue.svg)]()
 [![Shell: PowerShell 5.1+](https://img.shields.io/badge/PowerShell-5.1%2B-blue.svg)]()
-[![Version: v0.1.2d](https://img.shields.io/badge/Version-v0.1.2d-green.svg)](CHANGELOG.md)
+[![Version: v0.1.3a](https://img.shields.io/badge/Version-v0.1.3a-green.svg)](CHANGELOG.md)
 
 ---
 
 ## Key Features
 
+* **멀티 벤더 자동 감지 및 지원**: Cisco AnyConnect (Firepower/ASA) 및 Fortinet FortiGate SSL-VPN 게이트웨이 시그니처를 패킷 및 인증서 레벨에서 자동 판별
+* **Cisco 터널 그룹(AuthGroup) 자동 수집**: WebVPN 포털에서 운영 중인 터널 그룹을 실시간으로 질의하여 마법사에서 선택 제공
 * **백그라운드 무중단 데몬**: NSSM 2.24와 결합하여 터미널 창을 띄우지 않고 Windows 서비스로 구동하며, OS 부팅 시 자동 연결
 * **DPAPI 비밀번호 암호화 보관**: Windows DPAPI(`LocalMachine`)를 통해 암호를 `pw.bin`에 암호화 저장하고 `icacls`로 접근을 통제
 * **Wintun 커널 터널링**: WireGuard Wintun 고속 가상 인터페이스와 `vpnc-script-win.js`를 통한 안정적인 Split Routing 구성
@@ -35,7 +37,7 @@
 | **DPAPI 심층 기술 가이드** | `.NET ProtectedData`<br>`pw.bin` | [DPAPI 심층 기술 가이드](docs/dpapi-technical-guide.md)<br>DPAPI 키 도출 구조, LocalMachine 스코프, 무인 데몬 주입 설계 |
 | **icacls 접근 제어 가이드** | `icacls.exe`<br>`NTFS DACL` | [icacls 접근 제어 가이드](docs/icacls-technical-guide.md)<br>NTFS 보안 모델, 상속 완전 차단(/inheritance:r), Well-Known SID 하드닝 |
 | **장애 진단 및 트러블슈팅** | `profiles/<service>/logs/*` | [장애 진단 및 문제 해결 가이드](docs/troubleshooting.md)<br>로그 분석법, Wintun 어댑터 0x102 타임아웃 해결, 계정 잠금 대응 |
-| **버전 및 변경 이력** | 전체 프로젝트 리포지토리 | [변경 이력 (CHANGELOG.md)](CHANGELOG.md)<br>버전별(v0.1.0 ~ v0.1.2d) 추가/수정/보안 패치 및 산출물 추적 |
+| **버전 및 변경 이력** | 전체 프로젝트 리포지토리 | [변경 이력 (CHANGELOG.md)](CHANGELOG.md)<br>버전별(v0.1.0 ~ v0.1.3a) 추가/수정/보안 패치 및 산출물 추적 |
 
 ---
 
@@ -84,7 +86,7 @@ openconnectsg disconnect all       # 모든 활성 VPN 연결 해제
 | `openconnectsg remove <p>` | `rm`, `delete` | 프로필 구성 삭제 및 Windows 서비스 영구 등록 해제 |
 | `openconnectsg upgrade [<p>]` | `update` | 최신 소스로 바이너리 업그레이드 및 버전 검증 (`--force` 지원) |
 | `openconnectsg uninstall [<s\>]` | `un`, `purge` | 도구 제거 (범위: `app` 앱 전용 삭제, `full` 전체 완전 삭제) |
-| `openconnectsg version` | `-v` | 현재 버전 및 시스템 정보 출력 (`0.1.2d`) |
+| `openconnectsg version` | `-v` | 현재 버전 및 시스템 정보 출력 (`0.1.3a`) |
 | `openconnectsg banner` | - | 웰컴 Slant ASCII Figlet 배너 출력 |
 | `openconnectsg help` | `-h` | CLI 도움말 및 배너 출력 |
 
@@ -92,11 +94,11 @@ openconnectsg disconnect all       # 모든 활성 VPN 연결 해제
 
 ---
 
-## Latest Release Information (v0.1.2d)
+## Latest Release Information (v0.1.3a)
 
-* **업그레이드 버전 검증 및 무중단 보호**: `openconnectsg upgrade` 실행 시 현재 설치 버전과 최신 버전을 비교하여 동일한 경우 배포 및 서비스 재시작을 건너뛰어 활성 VPN 세션을 보호합니다.
-* **강제 재배포 옵션 (`--force`)**: 동일 버전이라도 바이너리 재배포가 필요한 경우 강제 업그레이드를 지원합니다.
-* **TUI 일원화 및 안정화**: 전체 서브커맨드에 80컬럼 박스 규격과 진단 실패 블록을 적용했습니다.
+* **멀티 벤더 자동 감지 (Cisco AnyConnect & Fortinet SSL-VPN)**: `openconnectsg setup` 실행 시 게이트웨이 주소만 입력하면 TLS 인증서, HTTP 헤더/쿠키, 리다이렉트 응답을 분석하여 Cisco 및 Fortinet 게이트웨이를 자동 감지하고 최적 프로필을 구성합니다.
+* **Cisco 터널 그룹(AuthGroup) 자동 탐색**: Cisco WebVPN 로그온 포털에서 운영 중인 터널 그룹 목록을 탐색하여 손쉽게 선택할 수 있도록 지원합니다.
+* **프로토콜 및 그룹 가시성 강화**: `openconnectsg list` 명령에 `PROTO` 컬럼을 신설하고, `openconnectsg status`에서 프로토콜 및 그룹 상세 정보를 표기합니다.
 
 전체 버전별 세부 변경 사항은 [CHANGELOG.md](CHANGELOG.md)에서 확인하실 수 있습니다.
 

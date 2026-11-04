@@ -19,6 +19,8 @@
 `openconnectsg`는 Windows 환경에서 공식 [OpenConnect](https://www.infradead.org/openconnect/)(`openconnect.exe`) CLI 도구를 백그라운드 Windows 서비스(NSSM)로 구동하고 프로필 관리를 보조하기 위해 작성된 **PowerShell 래퍼(Wrapper) 프레임워크** 입니다.
 
 ### Key Features
+- **멀티 벤더 자동 감지 및 지원**: Cisco AnyConnect (Firepower/ASA) 및 Fortinet FortiGate SSL-VPN 게이트웨이 시그니처 자동 식별.
+- **Cisco 터널 그룹(AuthGroup) 자동 수집**: WebVPN 포털에서 실시간으로 구성된 터널 그룹 목록을 탐색하여 손쉬운 그룹 선택 지원.
 - **DPAPI 비밀번호 암호화**: `LocalMachine` 스코프로 안전하게 보호된 암호 바이트(`pw.bin`) 저장.
 - **NSSM 서비스 통합**: 터미널 창 없이 백그라운드에서 상시 터널 유지 및 OS 부팅 시 자동 연결.
 - **단일 터널 보장**: 전역 뮤텍스를 기반으로 다중 연결 간의 라우팅 충돌 방지.

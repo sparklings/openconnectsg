@@ -61,6 +61,7 @@ openconnectsg <서브커맨드> [인자1] [인자2] ...
   - `#`: 프로필 번호(Index)
   - `User`: 등록된 사용자 계정명
   - `Server`: VPN 서버 주소 및 포트
+  - `PROTO`: VPN 게이트웨이 프로토콜 (`cisco`, `fortinet` 등)
   - `Alias`: 사용자가 지정한 별칭
   - `Status`: 윈도우 서비스 실행 상태 (`Running`, `Stopped`, `N/A`)
 - **실행 예시**:
@@ -70,12 +71,12 @@ openconnectsg <서브커맨드> [인자1] [인자2] ...
    ==============================================================================
     OpenConnectSg :: Profiles
    ==============================================================================
-    #   DEF  USER             SERVER                     ALIAS      STATUS
+    #   DEF USER           SERVER                   PROTO      ALIAS    STATUS
    ------------------------------------------------------------------------------
-    1    *   user01           203.0.113.10:443           office     Running
-    2        dev_user         198.51.100.50:443          lab        Stopped
+    1       sungwon.park   203.231.7.150:10443      fortinet   -        Stopped
+    2   *   sungwon.park   211.239.11.31:443        cisco      -        Running
    ------------------------------------------------------------------------------
-    Default profile: openconnect_203.0.113.10_443_a1b2c3d4
+    Default profile: openconnect_211.239.11.31_443_3bd426a3
    ==============================================================================
   ```
 
@@ -100,11 +101,13 @@ openconnectsg <서브커맨드> [인자1] [인자2] ...
    ==============================================================================
 
    [Profile Details]
-     Name       : openconnect_203.0.113.10_443_a1b2c3d4
-     Index      : 1
-     Alias      : office
-     User       : user01
-     Server     : 203.0.113.10:443
+     Name       : openconnect_211.239.11.31_443_3bd426a3
+     Index      : 2
+     Alias      : (none)
+     Protocol   : cisco (anyconnect)
+     AuthGroup  : DC_Network
+     User       : sungwon.park
+     Server     : 211.239.11.31:443
      Status     : Running
      Default    : Yes
 
@@ -216,16 +219,21 @@ openconnectsg <서브커맨드> [인자1] [인자2] ...
   openconnectsg add         # setup의 별칭
   openconnectsg install     # 이전 버전과의 호환 별칭
   ```
-- **대화형 입력 항목**:
-  1. **원격VPN서버 주소(IP 또는 도메인)**: 예: `vpn.example.com` 또는 `203.0.113.10`
+- **대화형 입력 및 자동 감지 항목**:
+  1. **원격VPN서버 주소(IP 또는 도메인)**: 예: `211.239.11.31` 또는 `vpn.example.com`
   2. **원격VPN서버 포트 [443]**: 엔터 입력 시 기본 443 포트 적용
-  3. **사용자 계정**: VPN 계정 아이디
-  4. **비밀번호 (숨김 입력)**: 마스킹 처리되어 화면에 노출되지 않음
+  3. **게이트웨이 시그니처 자동 감지 및 벤더 선택**:
+     - TLS 인증서(Subject/Issuer), HTTP 쿠키(`webvpn`, `SVPNCOOKIE`), 리다이렉트 응답을 분석하여 게이트웨이(Cisco AnyConnect / Fortinet SSL-VPN) 자동 감지
+     - 감지된 벤더를 추천 기본값으로 제안 (`[1] Cisco AnyConnect (Auto-detected) [2] Fortinet SSL-VPN [3] Other`)
+  4. **터널 그룹(AuthGroup) 자동 탐색 (Cisco AnyConnect 선택 시)**:
+     - Cisco WebVPN 포털에서 실시간으로 구성된 터널 그룹 목록을 질의·표시하고 원하는 그룹 입력/선택
+  5. **사용자 계정**: VPN 계정 아이디
+  6. **비밀번호 (숨김 입력)**: 마스킹 처리되어 화면에 노출되지 않음
 - **자동 수행 작업 (7단계)**:
   1. 프로필 디렉터리 생성 (`profiles/<service_name>/`)
   2. NSSM 2.24 바이너리 확인 및 **공식 SHA256 체크섬 무결성 검증**
   3. openconnect v9.21 다운로드 및 설치
-  4. 프로필 설정 파일(`openconnect.conf`, `user.txt`) 생성 및 가상 어댑터 명칭(`interface=OpenConnectSg`) 구성
+  4. 프로필 설정 파일(`openconnect.conf`, `user.txt`, `group.txt`) 생성 (벤더별 최적 옵션 자동 주입)
   5. Windows DPAPI(LocalMachine)를 이용한 비밀번호 암호화 저장(`pw.bin`) 및 SYSTEM/Admin NTFS ACL 적용
   6. 서버 인증서 지문(`pin-sha256`, RFC7469) 자동 프로빙 및 저장
   7. 통합 데몬 러너(`service-run`) 기반 NSSM Windows Service 등록 및 기동

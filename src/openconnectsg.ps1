@@ -13,7 +13,7 @@
 $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $OutputEncoding = [System.Text.Encoding]::UTF8
-$script:Version = '0.1.2d'
+$script:Version = '0.1.3a'
 
 $ocRoot      = 'C:\Program Files\OpenConnect'
 $root        = Join-Path $ocRoot 'profiles'
@@ -55,10 +55,21 @@ function Get-Profiles {
     $i++
     $name   = $d.Name
     $server = ''
+    $proto  = 'anyconnect'
+    $group  = ''
     $conf   = Join-Path $d.FullName 'openconnect.conf'
     if (Test-Path $conf) {
-      $line = Get-Content $conf -ErrorAction SilentlyContinue | Where-Object { $_ -match '^server=' } | Select-Object -First 1
-      if ($line) { $server = ($line -replace '^server=', '').Trim() -replace '^https?://', '' }
+      $cLines = Get-Content $conf -ErrorAction SilentlyContinue
+      $sLine = $cLines | Where-Object { $_ -match '^server=' } | Select-Object -First 1
+      if ($sLine) { $server = ($sLine -replace '^server=', '').Trim() -replace '^https?://', '' }
+      $pLine = $cLines | Where-Object { $_ -match '^protocol=' } | Select-Object -First 1
+      if ($pLine) { $proto = ($pLine -replace '^protocol=', '').Trim() }
+      $gLine = $cLines | Where-Object { $_ -match '^authgroup=' } | Select-Object -First 1
+      if ($gLine) { $group = ($gLine -replace '^authgroup=', '').Trim() }
+    }
+    if (-not $group) {
+      $gf = Join-Path $d.FullName 'group.txt'
+      if (Test-Path $gf) { $group = (Get-Content $gf -Raw).Trim() }
     }
     $user = ''
     $uf = Join-Path $d.FullName 'user.txt'
@@ -74,6 +85,8 @@ function Get-Profiles {
       Name      = $name
       User      = $user
       Server    = $server
+      Protocol  = $proto
+      Group     = $group
       Alias     = $alias
       Status    = $status
       IsDefault = ($name -eq $defaultName)
@@ -98,13 +111,14 @@ function Show-List {
   Write-Host " ==============================================================================" -ForegroundColor DarkGray
   Write-Host "  OpenConnectSg :: Profiles" -ForegroundColor White
   Write-Host " ==============================================================================" -ForegroundColor DarkGray
-  Write-Host ('  {0,-3} {1,-3} {2,-16} {3,-26} {4,-10} {5}' -f '#', 'DEF', 'USER', 'SERVER', 'ALIAS', 'STATUS') -ForegroundColor Cyan
+  Write-Host ('  {0,-3} {1,-3} {2,-14} {3,-24} {4,-10} {5,-8} {6}' -f '#', 'DEF', 'USER', 'SERVER', 'PROTO', 'ALIAS', 'STATUS') -ForegroundColor Cyan
   Write-Host " ------------------------------------------------------------------------------" -ForegroundColor DarkGray
   foreach ($p in $profiles) {
     $defMark = if ($p.IsDefault) { '*' } else { ' ' }
     $aliasStr = if ($p.Alias) { $p.Alias } else { '-' }
     $stColor = if ($p.Status -eq 'Running') { 'Green' } elseif ($p.Status -eq 'Stopped') { 'DarkGray' } else { 'Yellow' }
-    Write-Host ('  {0,-3} {1,-3} {2,-16} {3,-26} {4,-10} ' -f $p.Index, $defMark, $p.User, $p.Server, $aliasStr) -NoNewline
+    $protoStr = if ($p.Protocol -eq 'fortinet') { 'fortinet' } elseif ($p.Protocol -eq 'anyconnect') { 'cisco' } else { $p.Protocol }
+    Write-Host ('  {0,-3} {1,-3} {2,-14} {3,-24} {4,-10} {5,-8} ' -f $p.Index, $defMark, $p.User, $p.Server, $protoStr, $aliasStr) -NoNewline
     Write-Host $p.Status -ForegroundColor $stColor
   }
   Write-Host " ------------------------------------------------------------------------------" -ForegroundColor DarkGray
@@ -400,6 +414,11 @@ function Do-Status {
   Write-Host "   Index      : $($t.Index)" -ForegroundColor White
   Write-Host "   Alias      : $(if ($t.Alias) { $t.Alias } else { '(none)' })" -ForegroundColor White
   Write-Host "   User       : $($t.User)" -ForegroundColor White
+  $protoDisp = if ($t.Protocol -eq 'anyconnect') { 'cisco (anyconnect)' } elseif ($t.Protocol -eq 'fortinet') { 'fortinet' } else { $t.Protocol }
+  Write-Host "   Protocol   : $protoDisp" -ForegroundColor White
+  if ($t.Group) {
+    Write-Host "   AuthGroup  : $($t.Group)" -ForegroundColor White
+  }
   Write-Host "   Server     : $($t.Server)" -ForegroundColor White
   Write-Host "   Status     : $status" -ForegroundColor $(if ($status -eq 'Running') { 'Green' } else { 'DarkGray' })
   Write-Host "   Default    : $(if ($t.IsDefault) { 'Yes' } else { 'No' })" -ForegroundColor White
