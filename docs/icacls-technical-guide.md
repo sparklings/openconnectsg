@@ -197,7 +197,7 @@ icacls "C:\Program Files\OpenConnect\profiles\*\pw.bin"
 
 #### Expected Normal Output
 ```text
-C:\Program Files\OpenConnect\profiles\openconnect_203.231.7.150_10443_103995b4\pw.bin NT AUTHORITY\SYSTEM:(F)
+C:\Program Files\OpenConnect\profiles\openconnect_203.0.113.10_10443_a1b2c3d4\pw.bin NT AUTHORITY\SYSTEM:(F)
                                                                                      BUILTIN\Administrators:(F)
 
 Successfully processed 1 files; Failed processing 0 files

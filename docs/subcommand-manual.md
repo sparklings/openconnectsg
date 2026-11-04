@@ -73,10 +73,10 @@ openconnectsg <서브커맨드> [인자1] [인자2] ...
    ==============================================================================
     #   DEF USER           SERVER                   PROTO      ALIAS    STATUS
    ------------------------------------------------------------------------------
-    1       sungwon.park   203.231.7.150:10443      fortinet   -        Stopped
-    2   *   sungwon.park   211.239.11.31:443        cisco      -        Running
+    1       user01   203.0.113.10:10443      fortinet   -        Stopped
+    2   *   user01   198.51.100.50:443        cisco      -        Running
    ------------------------------------------------------------------------------
-    Default profile: openconnect_211.239.11.31_443_3bd426a3
+    Default profile: openconnect_198.51.100.50_443_3bd426a3
    ==============================================================================
   ```
 
@@ -101,13 +101,13 @@ openconnectsg <서브커맨드> [인자1] [인자2] ...
    ==============================================================================
 
    [Profile Details]
-     Name       : openconnect_211.239.11.31_443_3bd426a3
+     Name       : openconnect_198.51.100.50_443_3bd426a3
      Index      : 2
      Alias      : (none)
      Protocol   : cisco (anyconnect)
-     AuthGroup  : DC_Network
-     User       : sungwon.park
-     Server     : 211.239.11.31:443
+     AuthGroup  : Corporate_VPN
+     User       : user01
+     Server     : 198.51.100.50:443
      Status     : Running
      Default    : Yes
 
@@ -220,7 +220,7 @@ openconnectsg <서브커맨드> [인자1] [인자2] ...
   openconnectsg install     # 이전 버전과의 호환 별칭
   ```
 - **대화형 입력 및 자동 감지 항목**:
-  1. **원격VPN서버 주소(IP 또는 도메인)**: 예: `211.239.11.31` 또는 `vpn.example.com`
+  1. **원격VPN서버 주소(IP 또는 도메인)**: 예: `198.51.100.50` 또는 `vpn.example.com`
   2. **원격VPN서버 포트 [443]**: 엔터 입력 시 기본 443 포트 적용
   3. **게이트웨이 시그니처 자동 감지 및 벤더 선택**:
      - TLS 인증서(Subject/Issuer), HTTP 쿠키(`webvpn`, `SVPNCOOKIE`), 리다이렉트 응답을 분석하여 게이트웨이(Cisco AnyConnect / Fortinet SSL-VPN) 자동 감지

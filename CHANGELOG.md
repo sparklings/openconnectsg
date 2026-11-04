@@ -22,7 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Probes TLS certificate subjects/issuers, HTTP response headers, session cookies (`webvpn`, `samlPreauthSessionHash`, `SVPNCOOKIE`), redirect locations (`+CSCOE+`, `/remote/login`), and HTML payloads with zero prior user input.
 - **Cisco Tunnel Group (`authgroup`) Discovery**:
   - Automatically queries and extracts available authentication groups from Cisco WebVPN logon portals (`/+CSCOE+/logon.html`) and OpenConnect authentication negotiation probes.
-  - Dynamically prompts user with discovered tunnel groups (e.g. `APEX`, `DC_Network`, `Lab-ACI`, etc.).
+  - Dynamically prompts user with discovered tunnel groups (e.g. `Corporate_VPN`, `Engineering`, `General`, etc.).
 - **Interactive Multi-Vendor Setup Flow**:
   - Integrated vendor selection in `init-openconnectsg.ps1` defaulting to auto-detected gateway with high confidence.
   - Automatically writes protocol-specific directives (`protocol=anyconnect` with optional `authgroup`, or `protocol=fortinet` with `no-dtls`) into `openconnect.conf`.

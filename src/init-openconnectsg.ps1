@@ -198,7 +198,7 @@ if ($vpnProto -eq 'anyconnect') {
   if ($detected.Groups -and $detected.Groups.Count -gt 0) {
     Write-Host ""
     Write-Host "Discovered Tunnel Groups: $(($detected.Groups) -join ', ')" -ForegroundColor Cyan
-    $defGrp = if ($detected.Groups -contains 'DC_Network') { 'DC_Network' } else { $detected.Groups[0] }
+    $defGrp = $detected.Groups[0]
     $grpInput = (Read-Host "VPN Group / AuthGroup (leave blank if none) [$defGrp]").Trim()
     $vpnGroup = if ([string]::IsNullOrWhiteSpace($grpInput)) { $defGrp } else { $grpInput }
   } else {
