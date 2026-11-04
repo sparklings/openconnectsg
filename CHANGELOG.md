@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - **Port Argument Type Binding in `Detect-VpnGateway`**: Wrapped `-Port ([int]$vpnPort)` in explicit expression parentheses to prevent PowerShell parameter binder from interpreting `[int]443` as an invalid string literal during setup.
 
+### Improved
+- **Path Dynamicization & Portability**: Replaced all hardcoded system drive paths (`C:\Program Files`, `C:\Windows\...`) across `openconnectsg.ps1` and `init-openconnectsg.ps1` with dynamic environment variables (`$env:ProgramFiles`, `$env:SystemRoot`) and active command resolution (`Get-Command powershell.exe`).
+- **Flexible Tunnel Group Selection**: Enabled users to explicitly enter `-` or `none` during setup to opt out of an auto-detected tunnel group.
+
 ---
 
 ## [v0.1.3a] - 2026-11-04
