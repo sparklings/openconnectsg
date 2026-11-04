@@ -15,10 +15,13 @@ $ErrorActionPreference = 'Stop'
 $OutputEncoding = [System.Text.Encoding]::UTF8
 $script:Version = '0.1.3b'
 
-$ocRoot      = 'C:\Program Files\OpenConnect'
-$root        = Join-Path $ocRoot 'profiles'
-$nssm        = 'C:\Program Files\nssm\nssm.exe'
-$defaultFile = Join-Path $root 'default.txt'
+$programFiles = if ([string]::IsNullOrWhiteSpace($env:ProgramFiles)) { 'C:\Program Files' } else { $env:ProgramFiles }
+$ocRoot       = Join-Path $programFiles 'OpenConnect'
+$root         = Join-Path $ocRoot 'profiles'
+$nssmDir      = Join-Path $programFiles 'nssm'
+$nssm         = Join-Path $nssmDir 'nssm.exe'
+$binDir       = Join-Path $ocRoot 'bin'
+$defaultFile  = Join-Path $root 'default.txt'
 
 function Show-Banner {
   param([string]$SubTitle = "Windows Background Daemon & DPAPI Automation Wrapper")
@@ -634,8 +637,8 @@ function Do-Uninstall {
     Write-Host ""
     Write-Host "  [2] Full Purge"
     Write-Host "      - Stops and removes all openconnectsg profiles and services"
-    Write-Host "      - Completely uninstalls OpenConnect CLI (C:\Program Files\OpenConnect)"
-    Write-Host "      - Completely removes NSSM (C:\Program Files\nssm)"
+    Write-Host "      - Completely uninstalls OpenConnect CLI ($ocRoot)"
+    Write-Host "      - Completely removes NSSM ($nssmDir)"
     Write-Host "      - Purges all associated directories and PATH entries"
     Write-Host ""
     Write-Host "  [q] Cancel / Abort"
@@ -711,7 +714,7 @@ function Do-Uninstall {
   if ($mode -eq 'full') {
     Write-Host "[3/3] Purging OpenConnect CLI and NSSM..."
     # NSSM directory
-    $nssmDir = 'C:\Program Files\nssm'
+    $nssmDir = Join-Path $programFiles 'nssm'
     if (Test-Path $nssmDir) {
       Remove-Item $nssmDir -Recurse -Force -ErrorAction SilentlyContinue
       Write-Host "  Removed NSSM directory: $nssmDir"
@@ -780,7 +783,7 @@ function Compare-VersionString ($vCurrent, $vTarget) {
 
 function Do-Upgrade {
   param($arg1, $arg2)
-  $binDir = 'C:\Program Files\OpenConnect\bin'
+  $binDir = Join-Path $ocRoot 'bin'
   $installedFile = Join-Path $binDir '.installed'
 
   $force = $false

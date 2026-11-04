@@ -199,8 +199,14 @@ if ($vpnProto -eq 'anyconnect') {
     Write-Host ""
     Write-Host "Discovered Tunnel Groups: $(($detected.Groups) -join ', ')" -ForegroundColor Cyan
     $defGrp = $detected.Groups[0]
-    $grpInput = (Read-Host "VPN Group / AuthGroup (leave blank if none) [$defGrp]").Trim()
-    $vpnGroup = if ([string]::IsNullOrWhiteSpace($grpInput)) { $defGrp } else { $grpInput }
+    $grpInput = (Read-Host "VPN Group / AuthGroup [$defGrp] (enter '-' for none)").Trim()
+    if ([string]::IsNullOrWhiteSpace($grpInput)) {
+      $vpnGroup = $defGrp
+    } elseif ($grpInput -in @('-', 'none', 'empty')) {
+      $vpnGroup = ""
+    } else {
+      $vpnGroup = $grpInput
+    }
   } else {
     $vpnGroup = (Read-Host "VPN Group / AuthGroup (leave blank if none)").Trim()
   }
@@ -221,8 +227,9 @@ $tag     = $tag.Substring(0, 8)
 $svcName = "openconnect_${vpnHost}_${vpnPort}_${tag}"
 $dispName = "openconnectsg - ${vpnHost}:${vpnPort} ($vpnUser)"
 
-$ocRoot  = "C:\Program Files\OpenConnect"
-$nssmDir = "C:\Program Files\nssm"
+$programFiles = if ([string]::IsNullOrWhiteSpace($env:ProgramFiles)) { 'C:\Program Files' } else { $env:ProgramFiles }
+$ocRoot  = Join-Path $programFiles "OpenConnect"
+$nssmDir = Join-Path $programFiles "nssm"
 $binDir  = Join-Path $ocRoot "bin"
 $root    = Join-Path $ocRoot "profiles"
 $dir     = Join-Path $root $svcName
@@ -486,9 +493,14 @@ Write-Gap
 
 # 7) Register NSSM Managed Windows Service
 Write-Step "[7/7] Registering managed Windows Service ($svcName)..."
+$psExe = (Get-Command powershell.exe -ErrorAction SilentlyContinue).Source
+if (-not $psExe -or -not (Test-Path $psExe)) {
+  $psExe = Join-Path ($env:SystemRoot) "System32\WindowsPowerShell\v1.0\powershell.exe"
+}
+
 $exists = $null -ne (Get-Service -Name $svcName -ErrorAction SilentlyContinue)
 if (-not $exists) {
-  & $nssmExe install $svcName C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe 2>&1 | Out-Null
+  & $nssmExe install $svcName $psExe 2>&1 | Out-Null
   Write-Host "Service '$svcName' registered successfully."
 } else {
   Write-Host "Service '$svcName' already exists. Updating configuration."
@@ -498,7 +510,7 @@ if (-not $exists) {
 $dispatcherPs1 = Join-Path $binDir 'openconnectsg.ps1'
 $key = "HKLM:\SYSTEM\CurrentControlSet\Services\$svcName"
 $base = Join-Path $key "Parameters"
-Set-ItemProperty $base Application "C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
+Set-ItemProperty $base Application $psExe
 Set-ItemProperty $base AppDirectory $ocRoot
 Set-ItemProperty $base AppParameters "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$dispatcherPs1`" service-run $svcName"
 Set-ItemProperty $base AppStdout (Join-Path $logs "out.log")
