@@ -54,6 +54,35 @@ $sw.WriteLine($plainPw)
 $sw.Flush()
 ```
 
+### 2.1 Encryption & Decryption Workflow
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User as 사용자 / 관리자
+    participant Init as init-openconnectsg.ps1
+    participant DPAPI as Windows DPAPI (LocalMachine)
+    participant Disk as NTFS Storage (pw.bin)
+    participant Runner as openconnectsg.ps1 (service-run)
+    participant OC as openconnect.exe (stdin)
+
+    Note over User,Disk: [1] 초기 등록 단계 (Setup Time)
+    User->>Init: 비밀번호 입력 (Masked SecureString)
+    Init->>DPAPI: Protect(plainBytes, LocalMachine)
+    DPAPI-->>Init: encryptedBytes 반환
+    Init->>Disk: pw.bin 바이너리 파일 저장
+    Init->>Disk: icacls 상속 제거 & SYSTEM/Admin 전용 ACL 부여
+
+    Note over Disk,OC: [2] 런타임 연결 단계 (Daemon Runtime)
+    Runner->>Disk: pw.bin 읽기 (권한 검증 통과)
+    Runner->>DPAPI: Unprotect(encryptedBytes, LocalMachine)
+    DPAPI-->>Runner: plainBytes (메모리 일시 로드)
+    Runner->>OC: openconnect.exe 프로세스 기동
+    Runner->>OC: StreamWriter.WriteLine(plainPw) [stdin 파이프 직결 주입]
+    Runner-->>Runner: 메모리 내 비밀번호 변수 즉시 소거
+```
+
+
 > [!NOTE]
 > `LocalMachine` 스코프를 사용하는 이유:  
 > 서비스가 백그라운드에서 사용자 로그인 없이 OS 부팅 시(`NT AUTHORITY\SYSTEM` 계정) 구동되어야 하므로, 특정 사용자 로그인 세션에 종속되는 `CurrentUser` 스코프 대신 컴퓨터 수준 암호화(`LocalMachine`)를 사용합니다.

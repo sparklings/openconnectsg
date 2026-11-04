@@ -18,41 +18,42 @@ OpenConnectSg는 독립적인 VPN 클라이언트가 아니며, Windows 환경�
 
 ## 2. Overall Architecture Diagram
 
-```
-+-------------------------------------------------------------------------+
-|                              Windows OS                                 |
-+-------------------------------------------------------------------------+
-                                     │
-                    (OS 부팅 또는 사용자의 connect 명령)
-                                     ▼
-+─────────────────────────────────────────────────────────────────────────+
-|                 NSSM 2.24 (Windows Service Daemon)                      |
-|                   Service: openconnect_<host>_<port>_<tag8>             |
-+─────────────────────────────────────────────────────────────────────────+
-                                     │
-           (Process execution: powershell -File openconnectsg.ps1 service-run ...)
-                                     ▼
-+─────────────────────────────────────────────────────────────────────────+
-|                  OpenConnectSg Unified Runner                           |
-|  - Mutex 획득 (Global\openconnect_<host>_<port>_<tag8>)                 |
-|  - DPAPI(LocalMachine) pw.bin 복호화 (메모리 로드)                       |
-|  - openconnect.conf 설정 검증 및 Wintun 충돌 방지 살균(Sanitize)         |
-+─────────────────────────────────────────────────────────────────────────+
-             │                                              │
-      (stdin Stream Pipe)                           (--config openconnect.conf)
-             ▼                                              ▼
-+─────────────────────────────────────────────────────────────────────────+
-|                    openconnect.exe (GnuTLS v9.21)                       |
-|  - SSL-VPN Handshake (RFC 7469 pin-sha256 인증서 검증)                  |
-|  - Wintun Driver 로드 및 Wintun 가상 어댑터 인스턴스화                  |
-+─────────────────────────────────────────────────────────────────────────+
-                                     │
-                             (vpnc-script-win.js)
-                                     ▼
-+─────────────────────────────────────────────────────────────────────────+
-|               Windows Kernel Network Stack & Routing Table              |
-|  - Tunnel IP 할당 및 사내망 대역 Split Routing 경로 주입                |
-+─────────────────────────────────────────────────────────────────────────+
+```mermaid
+flowchart TD
+    subgraph OS ["Windows Operating System"]
+        Trigger["사용자 명령 또는 OS 부팅<br/><code>openconnectsg connect</code> / 자동 시작"]
+    end
+
+    subgraph NSSM_Layer ["NSSM Service Daemon (SCM & Supervisor)"]
+        Service["NSSM 2.24 Daemon<br/><code>openconnect_&lt;host&gt;_&lt;port&gt;_&lt;tag8&gt;</code>"]
+    end
+
+    subgraph Runner_Layer ["OpenConnectSg Unified Runner"]
+        Dispatcher["powershell.exe -File openconnectsg.ps1 service-run"]
+        Mutex["Global Mutex 획득<br/><code>Global\openconnect_&lt;host&gt;_&lt;port&gt;_&lt;tag8&gt;</code>"]
+        DPAPI["DPAPI LocalMachine 복호화<br/><code>pw.bin ➔ 메모리 로드</code>"]
+        Sanitize["openconnect.conf 검증 및 살균<br/><code>Wintun 충돌 방지 & no-dtls 자동 주입</code>"]
+    end
+
+    subgraph Core_Engine ["OpenConnect Core VPN Engine"]
+        OC["openconnect.exe (GnuTLS v9.21+)"]
+        SSL["SSL-VPN Handshake<br/>RFC 7469 <code>pin-sha256</code> 서버 인증서 검증"]
+        Wintun["Wintun Driver 동적 로드<br/>가상 L3 터널 어댑터 생성"]
+    end
+
+    subgraph Network_Stack ["Windows Kernel Network Stack"]
+        VPNC["Routing Script<br/><code>vpnc-script-win.js</code>"]
+        Kernel["Windows Kernel Routing Table<br/>Tunnel IP 할당 & Split Routing 경로 주입"]
+    end
+
+    Trigger -->|"서비스 시작 요청"| Service
+    Service -->|"프로세스 감시 및 실행"| Dispatcher
+    Dispatcher --> Mutex --> DPAPI --> Sanitize
+    DPAPI -.->|"stdin Stream Pipe (메모리 직결 암호 주입)"| OC
+    Sanitize -->|"--config openconnect.conf"| OC
+    OC --> SSL --> Wintun
+    Wintun -->|"네트워크 인터페이스 설정"| VPNC
+    VPNC -->|"사내망 대역 경로 주입"| Kernel
 ```
 
 ---

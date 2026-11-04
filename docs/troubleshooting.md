@@ -26,7 +26,27 @@ Get-Content "C:\Program Files\OpenConnect\profiles\<service_name>\logs\out.log" 
 
 ---
 
-## 2. Common Errors, Causes & Remediation
+## 2. Diagnostic & Troubleshooting Workflow
+
+```mermaid
+flowchart TD
+    Start(["VPN 연결 문제 발생"]) --> Step1{"서비스 상태 확인<br/><code>openconnectsg status</code>"}
+    
+    Step1 -->|"Running 상태이나 통신 불가"| Step2{"IP / Routing 확인<br/><code>ipconfig</code>"}
+    Step1 -->|"Stopped / Paused 상태"| Step3{"로그 파일 분석<br/><code>err.log / out.log</code>"}
+    
+    Step2 -->|"Wintun 어댑터 없음 / 0x102"| Fix1["어댑터 재설정<br/><code>openconnectsg disconnect all</code><br/><code>Restart-NetAdapter *Wintun*</code>"]
+    Step2 -->|"사내망 IP 핑 실패"| Fix2["VPN 단일 터널 확인<br/>기존 터널 충돌 여부 점검"]
+    
+    Step3 -->|"Permission denied"| Fix3["계정/비밀번호 재설정<br/><code>openconnectsg setup</code>"]
+    Step3 -->|"Certificate pin mismatch"| Fix4["서버 인증서 지문 갱신<br/><code>openconnectsg setup</code> (새 pin 추출)"]
+    Step3 -->|"Cookie rejected / DTLS loop"| Fix5["최신 버전 업그레이드<br/><code>openconnectsg upgrade --force</code><br/>(no-dtls 자동 살균)"]
+    Step3 -->|"Too many bad login attempts"| Fix6["방화벽 계정 잠금<br/>3~5분 대기 후 재시도"]
+```
+
+---
+
+## 3. Common Errors, Causes & Remediation
 
 ### ① Wintun Adapter Creation Timeout (`0x102` / `CreateTun: Wait failed`)
 * **현상**: `err.log`에 `Failed to create Wintun adapter: 0x102` 또는 타임아웃 에러가 발생하며 터널이 형성되지 않음.
