@@ -711,6 +711,11 @@ function Do-Uninstall {
     Write-Host "  Removed $binDir from System PATH."
   }
 
+  # Remove tray GUI logon task and Start Menu shortcut
+  try { Unregister-ScheduledTask -TaskName 'OpenConnectSg Tray' -Confirm:$false -ErrorAction Stop; Write-Host "  Removed tray logon task." } catch { }
+  $lnk = Join-Path $env:ProgramData 'Microsoft\Windows\Start Menu\Programs\OpenConnectSg.lnk'
+  if (Test-Path $lnk) { Remove-Item $lnk -Force -ErrorAction SilentlyContinue; Write-Host "  Removed Start Menu shortcut." }
+
   # Clean bin folder
   if (Test-Path $binDir) {
     Remove-Item $binDir -Recurse -Force -ErrorAction SilentlyContinue
@@ -964,6 +969,8 @@ function Do-Upgrade {
     if (Test-Path $srcCmd)     { Copy-Item $srcCmd $binDir -Force }
     if (Test-Path $initPs1)    { Copy-Item $initPs1 $binDir -Force }
     if (Test-Path $installPs1) { Copy-Item $installPs1 $binDir -Force }
+    $trayPs1 = Join-Path $srcBin 'openconnectsg-tray.ps1'
+    if (Test-Path $trayPs1)    { Copy-Item $trayPs1 $binDir -Force }
 
     $dateStr = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
     $marker = "version=$newVer`r`nsource=https://github.com/sparklings/openconnectsg`r`ninstalled=$dateStr`r`n"
@@ -1172,6 +1179,15 @@ namespace OpenConnectSg {
   }
 }
 
+function Do-Tray {
+  $trayPs1 = Join-Path $PSScriptRoot 'openconnectsg-tray.ps1'
+  if (-not (Test-Path $trayPs1)) { $trayPs1 = Join-Path $binDir 'openconnectsg-tray.ps1' }
+  if (-not (Test-Path $trayPs1)) { Write-Host "Tray GUI not found: $trayPs1" -ForegroundColor Red; return 1 }
+  Start-Process powershell.exe -WindowStyle Hidden -ArgumentList '-NoProfile', '-ExecutionPolicy', 'Bypass', '-WindowStyle', 'Hidden', '-File', "`"$trayPs1`""
+  Write-Host "  OpenConnectSg tray GUI started (see the notification area)." -ForegroundColor Green
+  return 0
+}
+
 function Show-Usage {
   Show-Banner "Command Line Interface Reference"
   $usage = @'
@@ -1182,6 +1198,7 @@ Usage:
   openconnectsg connect [<profile>]       Connect to profile (single-tunnel enforcement)
   openconnectsg disconnect [<profile|all>] Disconnect profile (or all active tunnels)
   openconnectsg setup                     Add new profile via interactive wizard
+  openconnectsg tray                      Open the tray GUI (connect/disconnect, network view)
   openconnectsg alias <profile> <alias>   Assign friendly alias to profile
   openconnectsg default <profile>         Set default profile
   openconnectsg remove <profile>          Remove profile and unregister Windows service
@@ -1192,7 +1209,7 @@ Usage:
   openconnectsg help                      Display this help screen
 
 Aliases:
-  ls -> list, up/start -> connect, down/stop -> disconnect, add -> setup, rm -> remove, un/purge -> uninstall, update -> upgrade
+  ls -> list, up/start -> connect, down/stop -> disconnect, gui -> tray, add -> setup, rm -> remove, un/purge -> uninstall, update -> upgrade
 
 Identifier:
   <profile> = Index (#) | Alias | Account name | Service name substring
@@ -1235,6 +1252,8 @@ try {
     'service-run'  { Do-ServiceRun $a1 } # Daemon runner invoked by Windows Service
     'version'      { Show-Version }
     'banner'       { Show-Banner }
+    'tray'         { $exitCode = Do-Tray }
+    'gui'          { $exitCode = Do-Tray }
     '-v'           { Write-Host "openconnectsg $script:Version" }
     '--version'    { Write-Host "openconnectsg $script:Version" }
     'help'         { Show-Usage }

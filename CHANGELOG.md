@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased]
+
+### Added
+- **Tray GUI (`src/openconnectsg-tray.ps1`, `openconnectsg tray`)**: WinForms window with a notification-area icon (green = connected, yellow = connecting, gray = disconnected). Connect/disconnect profiles from the window or the tray menu; closing the window keeps it running in the tray. Optional "start at Windows logon" checkbox registers a highest-privilege scheduled task so no UAC prompt appears at login. The installer copies the GUI and adds an `OpenConnectSg` Start Menu shortcut; uninstall removes both.
+- **Network view**: For the selected profile, shows the physical adapter/network (e.g. Wi-Fi SSID, source IP, gateway) used to reach the VPN server, the tunnel adapter and VPN IP, DNS, whether it is a full or split tunnel with the list of routed subnets, and where all other traffic goes. A lookup box shows which network any address or hostname would use.
+
+### Fixed
+- **Single auto-start tunnel**: `connect`, `default` and `setup` now leave only the chosen profile's service on Automatic start and set all others to Manual (setup also stops other running tunnels), so a reboot no longer brings up several tunnels at once.
+- **Installer self-deletion**: the installer no longer re-clones over (and deletes) the repository it runs from when `-RepoUrl` is left at its default.
+
+---
+
 ## [v0.1.3b] - 2026-11-04
 
 ### Fixed

@@ -61,7 +61,16 @@ openconnectsg setup
 ```
 > 서버 주소, 포트, 계정, 비밀번호를 입력하면 NSSM·openconnect 의존성 검증, 비밀번호 DPAPI 암호화 및 서비스 등록이 원스톱으로 진행됩니다.
 
-### 3) Routine VPN Operations
+### 3) Tray GUI (optional)
+시작 메뉴의 **OpenConnectSg** 또는 다음 명령으로 트레이 GUI를 실행합니다:
+```powershell
+openconnectsg tray
+```
+> 프로필 연결/해제, 창을 닫으면 트레이로 최소화, 아이콘 색으로 연결 상태 표시(초록/노랑/회색).
+> 선택한 연결이 사용하는 네트워크(VPN 서버까지 가는 Wi-Fi/이더넷, VPN IP, VPN으로 라우팅되는 대역, 그 외 트래픽 경로)를 보여주고, 특정 주소가 어느 네트워크로 나가는지 확인할 수 있습니다.
+> "Windows 로그인 시 트레이 자동 실행"을 체크하면 UAC 확인 없이 로그인 시 트레이가 시작됩니다.
+
+### 4) Routine VPN Operations
 ```powershell
 openconnectsg list                 # 등록된 프로필 목록 및 연결 상태 확인
 openconnectsg connect 1            # 1번 프로필로 연결 (기존 활성 터널 자동 해제)
