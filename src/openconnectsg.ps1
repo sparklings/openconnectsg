@@ -1040,6 +1040,23 @@ function Do-Upgrade {
     $trayPs1 = Join-Path $srcBin 'openconnectsg-tray.ps1'
     if (Test-Path $trayPs1)    { Copy-Item $trayPs1 $binDir -Force }
 
+    # Deploy / update Start Menu shortcut for Tray GUI
+    $targetTray = Join-Path $binDir 'openconnectsg-tray.ps1'
+    if (Test-Path $targetTray) {
+      try {
+        $lnkPath = Join-Path $env:ProgramData 'Microsoft\Windows\Start Menu\Programs\OpenConnectSg.lnk'
+        $wsh = New-Object -ComObject WScript.Shell
+        $lnk = $wsh.CreateShortcut($lnkPath)
+        $lnk.TargetPath = (Get-Command powershell.exe).Source
+        $lnk.Arguments  = "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$targetTray`""
+        $lnk.WorkingDirectory = $binDir
+        $lnk.Description = 'OpenConnectSg VPN tray'
+        $lnk.IconLocation = "$env:SystemRoot\System32\shell32.dll,18"
+        $lnk.Save()
+        Write-Host "   Start Menu shortcut updated       : $lnkPath" -ForegroundColor Gray
+      } catch { }
+    }
+
     $dateStr = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
     $marker = "version=$newVer`r`nsource=https://github.com/sparklings/openconnectsg`r`ninstalled=$dateStr`r`n"
     [System.IO.File]::WriteAllText($installedFile, $marker, (New-Object System.Text.UTF8Encoding($false)))
