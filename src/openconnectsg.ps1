@@ -1016,7 +1016,11 @@ function Do-Upgrade {
     Write-Host "   Target Version    : openconnectsg $newVer (Current: $script:Version)" -ForegroundColor White
 
     $cmp = Compare-VersionString $script:Version $newVer
-    if ($cmp -le 0 -and -not $force) {
+    $missingComponents = (-not (Test-Path (Join-Path $binDir 'openconnectsg-tray.ps1'))) -or
+                         (-not (Test-Path (Join-Path $binDir 'init-openconnectsg.ps1'))) -or
+                         (-not (Test-Path (Join-Path $binDir 'openconnectsg.cmd')))
+
+    if ($cmp -le 0 -and -not $force -and -not $missingComponents) {
       Write-Host "   Status            : Already up to date. No upgrade required." -ForegroundColor Green
       Write-Host ""
       Write-Host " ==============================================================================" -ForegroundColor DarkGray
@@ -1027,7 +1031,9 @@ function Do-Upgrade {
       return 0
     }
 
-    if ($force -and $cmp -le 0) {
+    if ($missingComponents -and $cmp -le 0) {
+      Write-Host "   Notice            : Missing core components detected in $binDir. Deploying missing files..." -ForegroundColor Yellow
+    } elseif ($force -and $cmp -le 0) {
       Write-Host "   Notice            : Force flag specified. Reinstalling version $newVer..." -ForegroundColor Yellow
     }
 
