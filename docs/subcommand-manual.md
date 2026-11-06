@@ -481,10 +481,10 @@ Windows 시스템 트레이(알림 영역)에 상주하는 WinForms GUI 도구�
   \____/ .___/\___/_/ /_/\____/\____/_/ /_/_/ /_/\___/\___/\__/  /____/\__, /   
       /_/                                                             /____/    
    ==============================================================================
-    OpenConnectSg :: System & Version Information (v1.0.4)
+    OpenConnectSg :: System & Version Information (v1.0.4a)
    ==============================================================================
 
-    Version       : openconnectsg 1.0.4
+    Version       : openconnectsg 1.0.4a
     Binary Path   : C:\Program Files\OpenConnect\bin
     Profiles Path : C:\Program Files\OpenConnect\profiles
     Repository    : https://github.com/sparklings/openconnectsg

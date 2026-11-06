@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.0.4a] - 2026-11-06
+
+### Fixed
+- **Tray GUI Deployment in `openconnectsg upgrade`**:
+  - Resolved an issue where running `openconnectsg upgrade` bypassed copying `openconnectsg-tray.ps1` and Start Menu shortcuts due to matching version strings.
+  - Added Start Menu shortcut (`%ProgramData%\Microsoft\Windows\Start Menu\Programs\OpenConnectSg.lnk`) creation/update directly into `Do-Upgrade`.
+  - Added missing component detection in `Do-Upgrade` to ensure essential scripts (`openconnectsg-tray.ps1`, `init-openconnectsg.ps1`) are deployed even if versions match.
+- **Documentation**:
+  - Expanded `docs/install-guide.md` with complete technical specifications for the System Tray GUI, deployed artifacts table, logon scheduled task architecture, and upgrade troubleshooting.
+
+---
+
 ## [1.0.4] - 2026-11-06
 
 ### Added

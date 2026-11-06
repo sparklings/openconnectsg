@@ -118,7 +118,7 @@ powershell -ExecutionPolicy Bypass -File .\install\install-openconnectsg.ps1 -Sk
 \____/ .___/\___/_/ /_/\____/\____/_/ /_/_/ /_/\___/\___/\__/  /____/\__, /   
     /_/                                                             /____/    
  ==============================================================================
-  OpenConnectSg :: Windows Background Daemon & DPAPI Automation Wrapper (v1.0.4)
+  OpenConnectSg :: Windows Background Daemon & DPAPI Automation Wrapper (v1.0.4a)
  ==============================================================================
   [DEPLOY]   Target   : C:\Program Files\OpenConnect\bin
   [SYSTEM]   PATH     : Successfully registered (Machine Scope)
@@ -156,7 +156,7 @@ Windows는 설치 프로그램(자식 프로세스)이 시스템 PATH를 변경�
 ### 5.3. Verify Installation
 ```powershell
 openconnectsg version
-# 출력: openconnectsg 1.0.4
+# 출력: openconnectsg 1.0.4a
 ```
 
 ### 5.4. Run Initial Profile Setup Wizard
@@ -170,7 +170,7 @@ openconnectsg setup
 
 ## 6. Windows Tray GUI & Network Route Inspector
 
-`openconnectsg` v1.0.4부터는 터미널을 열지 않고도 작업 표시줄 시스템 트레이에서 VPN 상태를 감시하고 제어할 수 있는 경량 WinForms GUI 애플리케이션(`openconnectsg-tray.ps1`)이 기본 번들로 제공됩니다.
+`openconnectsg` v1.0.4a부터는 터미널을 열지 않고도 작업 표시줄 시스템 트레이에서 VPN 상태를 감시하고 제어할 수 있는 경량 WinForms GUI 애플리케이션(`openconnectsg-tray.ps1`)이 기본 번들로 제공됩니다.
 
 ### 6.1. Launching the Tray GUI
 

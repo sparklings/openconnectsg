@@ -99,7 +99,7 @@ nssm install $serviceName "powershell.exe" `
 ```
 C:\Program Files\OpenConnect\
 ├── bin\                                  # 바이너리 및 실행 스크립트
-│   ├── openconnectsg.ps1                # 메인 CLI 디스패처 및 데몬 러너 (v1.0.4)
+│   ├── openconnectsg.ps1                # 메인 CLI 디스패처 및 데몬 러너 (v1.0.4a)
 │   ├── openconnectsg-tray.ps1           # WinForms 시스템 트레이 GUI 및 라우트 뷰어
 │   ├── openconnectsg.cmd                # PATH 연동용 셔틀
 │   ├── init-openconnectsg.ps1           # 프로필 생성 및 검증 마법사

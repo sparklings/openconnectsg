@@ -9,7 +9,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Platform: Windows](https://img.shields.io/badge/Platform-Windows%2010%2F11%2FServer-blue.svg)]()
 [![Shell: PowerShell 5.1+](https://img.shields.io/badge/PowerShell-5.1%2B-blue.svg)]()
-[![Version: v1.0.4](https://img.shields.io/badge/Version-v1.0.4-green.svg)](CHANGELOG.md)
+[![Version: v1.0.4a](https://img.shields.io/badge/Version-v1.0.4a-green.svg)](CHANGELOG.md)
 
 ---
 
@@ -37,7 +37,7 @@
 | **DPAPI 심층 기술 가이드** | `.NET ProtectedData`<br>`pw.bin` | [DPAPI 심층 기술 가이드](docs/dpapi-technical-guide.md)<br>DPAPI 키 도출 구조, LocalMachine 스코프, 무인 데몬 주입 설계 |
 | **icacls 접근 제어 가이드** | `icacls.exe`<br>`NTFS DACL` | [icacls 접근 제어 가이드](docs/icacls-technical-guide.md)<br>NTFS 보안 모델, 상속 완전 차단(/inheritance:r), Well-Known SID 하드닝 |
 | **장애 진단 및 트러블슈팅** | `profiles/<service>/logs/*` | [장애 진단 및 문제 해결 가이드](docs/troubleshooting.md)<br>로그 분석법, Wintun 어댑터 0x102 타임아웃 해결, 계정 잠금 대응 |
-| **버전 및 변경 이력** | 전체 프로젝트 리포지토리 | [변경 이력 (CHANGELOG.md)](CHANGELOG.md)<br>버전별(v0.1.0 ~ v1.0.4) 추가/수정/보안 패치 및 산출물 추적 |
+| **버전 및 변경 이력** | 전체 프로젝트 리포지토리 | [변경 이력 (CHANGELOG.md)](CHANGELOG.md)<br>버전별(v0.1.0 ~ v1.0.4a) 추가/수정/보안 패치 및 산출물 추적 |
 
 ---
 
@@ -95,7 +95,7 @@ openconnectsg disconnect all       # 모든 활성 VPN 연결 해제
 | `openconnectsg remove <p>` | `rm`, `delete` | 프로필 구성 삭제 및 Windows 서비스 영구 등록 해제 |
 | `openconnectsg upgrade [<p>]` | `update` | 최신 소스로 바이너리 업그레이드 및 버전 검증 (`--force` 지원) |
 | `openconnectsg uninstall [<s\>]` | `un`, `purge` | 도구 제거 (범위: `app` 앱 전용 삭제, `full` 전체 완전 삭제) |
-| `openconnectsg version` | `-v` | 현재 버전 및 시스템 정보 출력 (`1.0.4`) |
+| `openconnectsg version` | `-v` | 현재 버전 및 시스템 정보 출력 (`1.0.4a`) |
 | `openconnectsg banner` | - | 웰컴 Slant ASCII Figlet 배너 출력 |
 | `openconnectsg help` | `-h` | CLI 도움말 및 배너 출력 |
 
@@ -103,8 +103,9 @@ openconnectsg disconnect all       # 모든 활성 VPN 연결 해제
 
 ---
 
-## Latest Release Information (v1.0.4)
+## Latest Release Information (v1.0.4a)
 
+* **트레이 GUI 및 시작 메뉴 바로가기 업그레이드 자동 배포 (`openconnectsg upgrade`)**: 버전이 일치하더라도 누락된 핵심 구성 요소를 감지하여 자동 복사하며, 시작 메뉴 바로가기(`OpenConnectSg.lnk`) 갱신 로직을 추가했습니다.
 * **트레이 GUI 및 네트워크/라우팅 가시화 (`openconnectsg tray`)**: WinForms 기반 알림 영역 트레이 애플리케이션 제공. 프로필 연결/해제, Full vs Split Tunnel 판별, 서브넷 계층도(CIDR 트리 뷰), 주소별 나가는 경로 실시간 조회를 지원하며 Windows 로그인 시 무인 자동 실행을 지원합니다.
 * **단일 자동 시작 터널 정책 보장**: 활성화된 프로필만 부팅 시 `Automatic`으로 두고 나머지는 `Manual`로 변경하여 재부팅 시 여러 터널이 동시 기동되는 충돌을 원천 차단합니다.
 * **관리자 권한 자동 검증 및 무중단 UAC 승격**: 일반 사용자 콘솔에서 `connect`, `disconnect`, `setup` 등 실행 시 자동으로 UAC 승격을 호출하여 권한 거부(`Access is denied`) 문제를 해결했습니다.
