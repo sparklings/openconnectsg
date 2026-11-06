@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.1.3c] - 2026-11-06
+
+### Fixed
+- **Administrative Privilege Verification & UAC Elevation**: Implemented `Ensure-AdminPrivilege` to automatically check for elevated administrative rights across `connect`, `disconnect`, `remove`, `upgrade`, and `uninstall` commands. Resolves silent failure in non-elevated PowerShell sessions (closes #4).
+- **NSSM Error Visibility & Propagation**: Removed `2>$null` suppression in `Invoke-Nssm` and captured standard error streams; surfaces descriptive error reasons (e.g., Access Denied, service missing) during service operations.
+- **Accurate Disconnection Status Reporting**: Fixed logic in `Do-Disconnect` that previously outputted green `Status: Disconnected` even when service termination failed; now reports `Status: Failed to Disconnect` with proper non-zero exit codes.
+- **Process Tree Cleanup & Orphan Prevention (`Stop-TunnelProcess`)**: Ensured guaranteed termination of child `openconnect.exe` processes and removal of orphaned Wintun network adapters upon tunnel disconnection, and added process kill guard in `Do-ServiceRun` `finally` block.
+
+---
+
 ## [v0.1.3b] - 2026-11-04
 
 ### Fixed

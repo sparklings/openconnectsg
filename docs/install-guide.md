@@ -84,7 +84,7 @@ powershell -ExecutionPolicy Bypass -File .\install\install-openconnectsg.ps1 -Sk
 \____/ .___/\___/_/ /_/\____/\____/_/ /_/_/ /_/\___/\___/\__/  /____/\__, /   
     /_/                                                             /____/    
  ==============================================================================
-  OpenConnectSg :: Windows Background Daemon & DPAPI Automation Wrapper (v0.1.3b)
+  OpenConnectSg :: Windows Background Daemon & DPAPI Automation Wrapper (v0.1.3c)
  ==============================================================================
   [DEPLOY]   Target   : C:\Program Files\OpenConnect\bin
   [SYSTEM]   PATH     : Successfully registered (Machine Scope)
@@ -122,7 +122,7 @@ Windows는 설치 프로그램(자식 프로세스)이 시스템 PATH를 변경�
 ### 4.3. Verify Installation
 ```powershell
 openconnectsg version
-# 출력: openconnectsg 0.1.3b
+# 출력: openconnectsg 0.1.3c
 ```
 
 ### 4.4. Run Initial Profile Setup Wizard
