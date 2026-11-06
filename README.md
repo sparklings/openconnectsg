@@ -9,7 +9,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Platform: Windows](https://img.shields.io/badge/Platform-Windows%2010%2F11%2FServer-blue.svg)]()
 [![Shell: PowerShell 5.1+](https://img.shields.io/badge/PowerShell-5.1%2B-blue.svg)]()
-[![Version: v1.0.3e](https://img.shields.io/badge/Version-v1.0.3e-green.svg)](CHANGELOG.md)
+[![Version: v1.0.3c](https://img.shields.io/badge/Version-v1.0.3c-green.svg)](CHANGELOG.md)
 
 ---
 
@@ -37,7 +37,7 @@
 | **DPAPI 심층 기술 가이드** | `.NET ProtectedData`<br>`pw.bin` | [DPAPI 심층 기술 가이드](docs/dpapi-technical-guide.md)<br>DPAPI 키 도출 구조, LocalMachine 스코프, 무인 데몬 주입 설계 |
 | **icacls 접근 제어 가이드** | `icacls.exe`<br>`NTFS DACL` | [icacls 접근 제어 가이드](docs/icacls-technical-guide.md)<br>NTFS 보안 모델, 상속 완전 차단(/inheritance:r), Well-Known SID 하드닝 |
 | **장애 진단 및 트러블슈팅** | `profiles/<service>/logs/*` | [장애 진단 및 문제 해결 가이드](docs/troubleshooting.md)<br>로그 분석법, Wintun 어댑터 0x102 타임아웃 해결, 계정 잠금 대응 |
-| **버전 및 변경 이력** | 전체 프로젝트 리포지토리 | [변경 이력 (CHANGELOG.md)](CHANGELOG.md)<br>버전별(v0.1.0 ~ v1.0.3e) 추가/수정/보안 패치 및 산출물 추적 |
+| **버전 및 변경 이력** | 전체 프로젝트 리포지토리 | [변경 이력 (CHANGELOG.md)](CHANGELOG.md)<br>버전별(v0.1.0 ~ v1.0.3c) 추가/수정/보안 패치 및 산출물 추적 |
 
 ---
 
@@ -86,7 +86,7 @@ openconnectsg disconnect all       # 모든 활성 VPN 연결 해제
 | `openconnectsg remove <p>` | `rm`, `delete` | 프로필 구성 삭제 및 Windows 서비스 영구 등록 해제 |
 | `openconnectsg upgrade [<p>]` | `update` | 최신 소스로 바이너리 업그레이드 및 버전 검증 (`--force` 지원) |
 | `openconnectsg uninstall [<s\>]` | `un`, `purge` | 도구 제거 (범위: `app` 앱 전용 삭제, `full` 전체 완전 삭제) |
-| `openconnectsg version` | `-v` | 현재 버전 및 시스템 정보 출력 (`1.0.3e`) |
+| `openconnectsg version` | `-v` | 현재 버전 및 시스템 정보 출력 (`1.0.3c`) |
 | `openconnectsg banner` | - | 웰컴 Slant ASCII Figlet 배너 출력 |
 | `openconnectsg help` | `-h` | CLI 도움말 및 배너 출력 |
 
@@ -94,7 +94,7 @@ openconnectsg disconnect all       # 모든 활성 VPN 연결 해제
 
 ---
 
-## Latest Release Information (v1.0.3e)
+## Latest Release Information (v1.0.3c)
 
 * **관리자 권한 자동 검증 및 무중단 UAC 승격**: 일반 사용자 PowerShell 창에서 `connect`, `disconnect`, `setup`, `remove`, `upgrade`, `uninstall` 실행 시 권한 부족(`Access is denied`)으로 멈추지 않고 자동으로 UAC 승격을 요청하여 일관된 서비스 제어를 보장합니다.
 * **NSSM 오류 가시화 및 원인 전파**: `2>$null` 에러 마스킹을 제거하고 표준 오류 스트림(`2>&1`)을 캡처하여, 서비스 제어 실패 시 실제 오류 원인(권한 거부, 서비스 미존재 등)을 사용자에게 명확히 피드백합니다.

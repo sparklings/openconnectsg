@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [1.0.3e] - 2026-11-06
+## [1.0.3c] - 2026-11-06
 
 ### Fixed
 - **Administrative Privilege Verification & Seamless UAC Elevation (`Ensure-AdminPrivilege`)**:
