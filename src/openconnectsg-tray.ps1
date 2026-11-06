@@ -50,6 +50,13 @@ if (-not ('OcsgTray.Native' -as [type])) {
 [void][OcsgTray.Native]::ShowWindow([OcsgTray.Native]::GetConsoleWindow(), 0)
 [void][OcsgTray.Native]::SetProcessDPIAware()
 [System.Windows.Forms.Application]::EnableVisualStyles()
+# An exception escaping a WinForms event handler would end the process; log it and keep running.
+$script:errLog = Join-Path $env:TEMP 'openconnectsg-tray-error.log'
+[System.Windows.Forms.Application]::SetUnhandledExceptionMode([System.Windows.Forms.UnhandledExceptionMode]::CatchException)
+[System.Windows.Forms.Application]::add_ThreadException({
+    param($s, $e)
+    try { [System.IO.File]::AppendAllText($script:errLog, "$(Get-Date -Format 's') $($e.Exception | Out-String)`r`n") } catch { }
+  })
 
 # --- Single instance: a second launch just brings the existing window to front ---
 $created = $false
@@ -190,6 +197,105 @@ function Get-TunnelRoutes($ad) {
   return [pscustomobject]@{ IPs = $ips; Routes = $routes }
 }
 
+#  Route hierarchy: groups the tunnel routes by containment under private ranges
+#  (10/8, 172.16/12, 192.168/16) or their first octet, drawn as a text tree.
+function ConvertTo-Net([string]$prefix) {
+  $parts = $prefix -split '/'
+  $b = [System.Net.IPAddress]::Parse($parts[0]).GetAddressBytes(); [Array]::Reverse($b)
+  $len = [int]$parts[1]
+  $mask = if ($len -eq 0) { [uint32]0 } else { [uint32](([uint64]4294967295 -shl (32 - $len)) -band 4294967295) }
+  return [pscustomobject]@{ Prefix = $prefix; Net = [uint32]([BitConverter]::ToUInt32($b, 0) -band $mask); Len = $len; Mask = $mask }
+}
+
+function Test-NetContains($outer, $inner) {
+  return $outer.Len -le $inner.Len -and (([uint32]($inner.Net -band $outer.Mask)) -eq $outer.Net)
+}
+
+function Get-RangeHint($n) {
+  $o = $n.Prefix.Split('/')[0].Split('.')
+  switch ($n.Len) {
+    32 { return '단일 호스트' }
+    24 { return "$($o[0]).$($o[1]).$($o[2]).x" }
+    16 { return "$($o[0]).$($o[1]).x.x" }
+    8  { return "$($o[0]).x.x.x" }
+  }
+  $last = [uint32]($n.Net -bor (-bnot $n.Mask -band 4294967295))
+  $lb = [BitConverter]::GetBytes($last); [Array]::Reverse($lb)
+  return "$($n.Prefix.Split('/')[0]) ~ $([System.Net.IPAddress]::new($lb))"
+}
+
+function Format-RouteTree([string[]]$routes) {
+  $nodes = @($routes | ForEach-Object { ConvertTo-Net $_ } | Sort-Object Len, Net)
+  # Virtual top-level groups
+  $groups = New-Object System.Collections.ArrayList
+  foreach ($g in @(@('10.0.0.0/8', '사설'), @('172.16.0.0/12', '사설'), @('192.168.0.0/16', '사설'))) {
+    $gn = ConvertTo-Net $g[0]
+    if ($nodes | Where-Object { Test-NetContains $gn $_ }) { [void]$groups.Add([pscustomobject]@{ N = $gn; Kind = $g[1] }) }
+  }
+  foreach ($n in $nodes) {
+    if ($groups | Where-Object { Test-NetContains $_.N $n }) { continue }
+    $first = "$($n.Prefix.Split('.')[0]).0.0.0/8"
+    if (-not ($groups | Where-Object { $_.N.Prefix -eq $first })) {
+      [void]$groups.Add([pscustomobject]@{ N = (ConvertTo-Net $first); Kind = '공인' })
+    }
+  }
+  $groups = @($groups | Sort-Object { $_.N.Net })
+
+  $tree = @{}   # prefix -> children list
+  $all = @()
+  foreach ($g in $groups) {
+    $isRoute = [bool]($nodes | Where-Object { $_.Prefix -eq $g.N.Prefix })
+    $all += [pscustomobject]@{ N = $g.N; Virtual = -not $isRoute; Kind = $g.Kind }
+  }
+  foreach ($n in $nodes) {
+    if ($all | Where-Object { $_.N.Prefix -eq $n.Prefix }) { continue }
+    $all += [pscustomobject]@{ N = $n; Virtual = $false; Kind = '' }
+  }
+  # Bundle 2+ subnets sharing the same /16 (when no /16 route exists) under a [x.y.0.0/16] node
+  $by16 = $nodes | Where-Object { $_.Len -gt 16 } | Group-Object { $o = $_.Prefix.Split('.'); "$($o[0]).$($o[1]).0.0/16" }
+  foreach ($g in $by16) {
+    if ($g.Count -lt 2) { continue }
+    $n16 = ConvertTo-Net $g.Name
+    if ($all | Where-Object { $_.N.Len -le 16 -and $_.N.Len -gt 8 -and -not $_.Virtual -and (Test-NetContains $_.N $n16) }) { continue }
+    $all += [pscustomobject]@{ N = $n16; Virtual = $true; Kind = '' }
+  }
+  # parent = deepest other node that contains it (a public /8 bundle never holds a private range)
+  $roots = @()
+  foreach ($x in $all) {
+    $parent = $all | Where-Object { $_ -ne $x -and $_.N.Len -lt $x.N.Len -and (Test-NetContains $_.N $x.N) -and
+        -not ($_.Kind -eq '공인' -and $x.Kind -eq '사설') -and
+        -not ($_.Kind -eq '공인' -and ($all | Where-Object { $_.Kind -eq '사설' -and (Test-NetContains $_.N $x.N) })) } |
+      Sort-Object { $_.N.Len } -Descending | Select-Object -First 1
+    if ($parent) {
+      if (-not $tree.ContainsKey($parent.N.Prefix)) { $tree[$parent.N.Prefix] = @() }
+      $tree[$parent.N.Prefix] += $x
+    } else { $roots += $x }
+  }
+
+  $out = New-Object System.Collections.ArrayList
+  $label = {
+    param($x)
+    $hint = Get-RangeHint $x.N
+    if ($x.Virtual) { "[$($x.N.Prefix)]  $("$($x.Kind) $hint".Trim())" }
+    elseif ($x.Kind) { "$($x.N.Prefix)  ($($x.Kind) $hint 전체)" }
+    else { "$($x.N.Prefix)  ($hint)" }
+  }
+  $walk = $null
+  $walk = {
+    param($x, [string]$indent, [bool]$isLast, [bool]$isRoot)
+    if ($isRoot) { [void]$out.Add((& $label $x)); $childIndent = '' }
+    else {
+      $branch = if ($isLast) { '└─ ' } else { '├─ ' }
+      [void]$out.Add("$indent$branch$(& $label $x)")
+      $childIndent = $indent + $(if ($isLast) { '   ' } else { '│  ' })
+    }
+    $kids = @($tree[$x.N.Prefix] | Where-Object { $_ } | Sort-Object { $_.N.Net }, { $_.N.Len })
+    for ($k = 0; $k -lt $kids.Count; $k++) { & $walk $kids[$k] $childIndent ($k -eq $kids.Count - 1) $false }
+  }
+  foreach ($r in ($roots | Sort-Object { $_.N.Net })) { & $walk $r '' $true $true }
+  return $out
+}
+
 function Get-NetworkReport($p) {
   if (-not $p) { return '프로필을 선택하세요.' }
   $sb = New-Object System.Text.StringBuilder
@@ -226,6 +332,9 @@ function Get-NetworkReport($p) {
       $other = if ($inet) { Format-Path $inet } else { '경로 없음' }
       [void]$sb.AppendLine('▶ 그 외 트래픽 (인터넷 등)')
       [void]$sb.AppendLine("  $other")
+      [void]$sb.AppendLine('')
+      [void]$sb.AppendLine('▶ VPN 대역 계층도  ([ ] = 묶음 표시용, 나머지는 실제 VPN 경로)')
+      foreach ($l in (Format-RouteTree $t.Routes)) { [void]$sb.AppendLine("  $l") }
     }
   } elseif ($state -eq 'Connecting') {
     [void]$sb.AppendLine('▶ 터널 어댑터가 아직 올라오지 않았습니다 (인증/재연결 중).')
@@ -383,6 +492,9 @@ $script:jobLabel = ''
 $script:jobOut = Join-Path $env:TEMP 'openconnectsg-tray.out'
 $script:hintShown = $false
 $script:quitting = $false
+$script:rebuilding = $false
+$script:refreshAt = @()       # pending report refreshes (routes arrive a few seconds after the tunnel comes up)
+$script:lastReport = [DateTime]::MinValue
 
 function Get-Selected {
   if ($lv.SelectedItems.Count -eq 0) { return $null }
@@ -412,9 +524,64 @@ function Update-Buttons {
   $chkAuto.Enabled       = $isAdmin
 }
 
+# The report queries routing/adapters (seconds on a cold start), so it runs in a
+# background runspace; Complete-Report (500 ms timer) puts the result on screen.
+$script:reportFns = @('Get-TunnelAdapter', 'Get-ConnState', 'Get-StateText', 'Resolve-IPv4', 'Get-PathTo', 'Format-Path',
+  'Get-TunnelRoutes', 'ConvertTo-Net', 'Test-NetContains', 'Get-RangeHint', 'Format-RouteTree', 'Get-NetworkReport')
+$iss = [System.Management.Automation.Runspaces.InitialSessionState]::CreateDefault2()
+foreach ($fn in $script:reportFns) {
+  $iss.Commands.Add((New-Object System.Management.Automation.Runspaces.SessionStateFunctionEntry($fn, (Get-Command $fn -CommandType Function).Definition)))
+}
+$script:reportRs = [runspacefactory]::CreateRunspace($iss)
+$script:reportRs.Open()
+$script:reportPending = $false
+# Warm up the networking modules (cold load takes seconds) while the window is being built.
+$script:reportPs = [powershell]::Create()
+$script:reportPs.Runspace = $script:reportRs
+[void]$script:reportPs.AddScript('Import-Module NetTCPIP, NetAdapter, NetConnection, DnsClient -ErrorAction SilentlyContinue; $null = Find-NetRoute -RemoteIPAddress 127.0.0.1 -ErrorAction SilentlyContinue')
+$script:reportFor = '<warmup>'
+$script:reportAr = $script:reportPs.BeginInvoke()
+
 function Update-Report {
-  $form.Cursor = 'WaitCursor'
-  try { $txt.Text = (Get-NetworkReport (Get-Selected)) -replace "`r?`n", "`r`n" } finally { $form.Cursor = 'Default' }
+  if ($script:reportAr) { $script:reportPending = $true; return }
+  $p = Get-Selected
+  $script:reportFor = if ($p) { $p.Name } else { '' }
+  if (-not $txt.Text) { $txt.Text = '네트워크 정보를 확인하는 중…' }
+  $ps = [powershell]::Create()
+  $ps.Runspace = $script:reportRs
+  [void]$ps.AddCommand('Get-NetworkReport').AddArgument($p)
+  $script:reportPs = $ps
+  $script:reportAr = $ps.BeginInvoke()
+}
+
+function Complete-Report {
+  if (-not $script:reportAr -or -not $script:reportAr.IsCompleted) { return }
+  try {
+    $res = $script:reportPs.EndInvoke($script:reportAr)
+    $new = ([string]($res | Select-Object -First 1)) -replace "`r?`n", "`r`n"
+    if ($script:reportPs.Streams.Error.Count -gt 0 -and -not $new) { $new = "네트워크 정보 오류: $($script:reportPs.Streams.Error[0])" }
+  } catch { $new = "네트워크 정보 오류: $($_.Exception.Message)" }
+  $script:reportPs.Dispose(); $script:reportPs = $null; $script:reportAr = $null
+  $sel = Get-Selected
+  $selName = if ($sel) { $sel.Name } else { '' }
+  if ($selName -eq $script:reportFor) {
+    if ($new -ne $txt.Text) { $keep = $txt.SelectionStart; $txt.Text = $new; $txt.SelectionStart = [Math]::Min($keep, $new.Length) }
+    $script:lastReport = Get-Date
+    # Connected but routes not installed yet → look again shortly
+    if ($new -match 'Split tunnel, 0개' -or $new -match '터널 어댑터가 아직') { $script:refreshAt += (Get-Date).AddSeconds(5) }
+  } else { $script:reportPending = $true }
+  if ($script:reportPending) { $script:reportPending = $false; Update-Report }
+}
+
+# Called every tick: catch up on routes/DNS that appear after the state change.
+function Update-ReportIfDue {
+  $now = Get-Date
+  $due = @($script:refreshAt | Where-Object { $_ -le $now })
+  $connected = [bool]($script:profiles | Where-Object { $_.State -ne 'Disconnected' })
+  if ($due.Count -gt 0 -or ($connected -and ($now - $script:lastReport).TotalSeconds -ge 60)) {
+    $script:refreshAt = @($script:refreshAt | Where-Object { $_ -gt $now })
+    Update-Report
+  }
 }
 
 function Invoke-Cli([string]$label, [string[]]$cliArgs) {
@@ -423,6 +590,7 @@ function Invoke-Cli([string]$label, [string[]]$cliArgs) {
   $script:job = Start-Process powershell.exe -WindowStyle Hidden -PassThru `
     -RedirectStandardOutput $script:jobOut `
     -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$cliPs1`" $q"
+  [void]$script:job.Handle   # PS 5.1: without touching Handle now, ExitCode is $null after exit
   $script:jobLabel = $label
   $lblStatus.Text = "$label 진행 중…"
   Update-Buttons
@@ -434,6 +602,8 @@ function Complete-Job {
   try { $out = (Get-Content $script:jobOut -Raw -ErrorAction SilentlyContinue) } catch { }
   $label = $script:jobLabel
   $script:job = $null
+  if ($null -eq $code) { $code = if ($out -match 'Status: (Running|Disconnected)') { 0 } else { 1 } }
+  Update-All -Force
   if ($code -eq 0) {
     $lblStatus.Text = "$label 완료 ($(Get-Date -Format 'HH:mm:ss'))"
     $tray.ShowBalloonTip(3000, 'OpenConnectSg', "$label 완료", 'Info')
@@ -445,9 +615,9 @@ function Complete-Job {
     }
     $lblStatus.Text = "$label 실패 (코드 $code)"
     $tray.ShowBalloonTip(5000, 'OpenConnectSg', "$label 실패", 'Error')
-    [void][System.Windows.Forms.MessageBox]::Show($form, "$label 실패 (코드 $code)`n`n$reason", 'OpenConnectSg', 'OK', 'Warning')
+    $owner = if ($form.Visible) { $form } else { $null }
+    [void][System.Windows.Forms.MessageBox]::Show($owner, "$label 실패 (코드 $code)`n`n$reason", 'OpenConnectSg', 'OK', 'Warning')
   }
-  Update-All -Force
 }
 
 function Do-ConnectProfile($p) {
@@ -491,11 +661,14 @@ function Update-All([switch]$Force) {
   foreach ($p in $list) { $p | Add-Member -NotePropertyName State -NotePropertyValue (Get-ConnState $p) -Force }
   $sig = ($list | ForEach-Object { "$($_.Name)|$($_.State)|$($_.IsDefault)|$($_.Alias)" }) -join ';'
   $script:profiles = $list
-  if (-not $Force -and $sig -eq $script:stateSig) { return }
+  if (-not $Force -and $sig -eq $script:stateSig) { Update-Buttons; return }
   $script:stateSig = $sig
+  $now = Get-Date
+  $script:refreshAt = @($now.AddSeconds(5), $now.AddSeconds(15), $now.AddSeconds(30))
 
   $sel = Get-Selected
   $selName = if ($sel) { $sel.Name } else { $null }
+  $script:rebuilding = $true   # suppress SelectedIndexChanged reports while the list is rebuilt
   $lv.BeginUpdate(); $lv.Items.Clear()
   foreach ($p in $list) {
     $it = New-Object System.Windows.Forms.ListViewItem((Get-StateText $p.State))
@@ -516,6 +689,7 @@ function Update-All([switch]$Force) {
     $lv.Items[[Math]::Max(0, $idx)].Selected = $true
   }
   $lv.EndUpdate()
+  $script:rebuilding = $false
 
   $overall = if ($list | Where-Object { $_.State -eq 'Connected' }) { 'Connected' }
              elseif ($list | Where-Object { $_.State -eq 'Connecting' }) { 'Connecting' } else { 'Disconnected' }
@@ -535,7 +709,7 @@ function Update-All([switch]$Force) {
 # ============================================================================
 #  Events
 # ============================================================================
-$lv.Add_SelectedIndexChanged({ if ($lv.SelectedItems.Count -gt 0) { Update-Buttons; Update-Report } })
+$lv.Add_SelectedIndexChanged({ if (-not $script:rebuilding -and $lv.SelectedItems.Count -gt 0) { Update-Buttons; Update-Report } })
 $lv.Add_DoubleClick({
     $p = Get-Selected
     if ($p -and $isAdmin -and -not $script:job) { if ($p.State -eq 'Disconnected') { Do-ConnectProfile $p } }
@@ -578,7 +752,9 @@ $tray.Add_MouseClick({ if ($_.Button -eq 'Left') { Show-Main } })
 $tray.Add_BalloonTipClicked({ Show-Main })
 
 $form.Add_FormClosing({
-    if (-not $script:quitting -and $_.CloseReason -eq 'UserClosing') {
+    # Hide to tray on any close except the tray's own Exit, Windows shutdown or Task Manager
+    $reason = [string]$_.CloseReason
+    if (-not $script:quitting -and $reason -notin @('WindowsShutDown', 'TaskManagerClosing', 'ApplicationExitCall')) {
       $_.Cancel = $true
       $form.Hide()
       if (-not $script:hintShown) {
@@ -593,20 +769,26 @@ $timer.Interval = 3000
 $timer.Add_Tick({
     if ($script:showEvt.WaitOne(0)) { Show-Main }
     if ($script:job -and $script:job.HasExited) { Complete-Job; return }
-    try { Update-All } catch { $lblStatus.Text = "갱신 오류: $($_.Exception.Message)" }
+    try { Update-All; Update-ReportIfDue } catch { $lblStatus.Text = "갱신 오류: $($_.Exception.Message)" }
   })
 
 # Faster tick just for the "bring to front" signal from a second launch
 $showTimer = New-Object System.Windows.Forms.Timer
 $showTimer.Interval = 500
-$showTimer.Add_Tick({ if ($script:showEvt.WaitOne(0)) { Show-Main } })
+$showTimer.Add_Tick({
+    if ($script:showEvt.WaitOne(0)) { Show-Main }
+    Complete-Report
+  })
 
-$form.Add_Shown({ Update-All -Force; $timer.Start(); $showTimer.Start() })
+$form.Add_Shown({
+    $timer.Start(); $showTimer.Start()
+    try { Update-All -Force } catch { $lblStatus.Text = "갱신 오류: $($_.Exception.Message)" }
+  })
 $chkAuto.Checked = Test-AutoStart
 
 if ($Hidden) {
   # Build state without showing the window
-  Update-All -Force; $timer.Start(); $showTimer.Start()
+  $timer.Start(); $showTimer.Start(); Update-All -Force
   [System.Windows.Forms.Application]::Run()
 } else {
   [System.Windows.Forms.Application]::Run($form)

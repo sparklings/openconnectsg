@@ -11,9 +11,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - **Tray GUI (`src/openconnectsg-tray.ps1`, `openconnectsg tray`)**: WinForms window with a notification-area icon (green = connected, yellow = connecting, gray = disconnected). Connect/disconnect profiles from the window or the tray menu; closing the window keeps it running in the tray. Optional "start at Windows logon" checkbox registers a highest-privilege scheduled task so no UAC prompt appears at login. The installer copies the GUI and adds an `OpenConnectSg` Start Menu shortcut; uninstall removes both.
+- **Route hierarchy view**: Below the existing split-tunnel route list, the network view draws the routed subnets as a tree (private 10/8, 172.16/12, 192.168/16 and per-first-octet groups, nested by containment, with 2+ subnets sharing a /16 bundled), each annotated with its address range.
 - **Network view**: For the selected profile, shows the physical adapter/network (e.g. Wi-Fi SSID, source IP, gateway) used to reach the VPN server, the tunnel adapter and VPN IP, DNS, whether it is a full or split tunnel with the list of routed subnets, and where all other traffic goes. A lookup box shows which network any address or hostname would use.
 
 ### Fixed
+- **Tray responsiveness**: the network report (route/adapter queries take seconds on a cold start) now runs in a background runspace with module warm-up, so the window, polling timers and second-launch re-show are never blocked. The report refreshes 5/15/30 s after a state change, every 5 s while routes are still missing, and every 60 s while connected.
+- **Tray action result**: `Start-Process -PassThru` reports an empty `ExitCode` on PowerShell 5.1 unless its handle is touched; successful connect/disconnect were shown as failures with a modal error that left the Connect button disabled.
+- **Close-to-tray**: closing the window always hides it to the tray unless the tray's own Exit, Windows shutdown or Task Manager closes it; unhandled UI exceptions are logged to `%TEMP%\openconnectsg-tray-error.log` instead of ending the process.
 - **Single auto-start tunnel**: `connect`, `default` and `setup` now leave only the chosen profile's service on Automatic start and set all others to Manual (setup also stops other running tunnels), so a reboot no longer brings up several tunnels at once.
 - **Installer self-deletion**: the installer no longer re-clones over (and deletes) the repository it runs from when `-RepoUrl` is left at its default.
 
