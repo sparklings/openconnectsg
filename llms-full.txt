@@ -6,7 +6,7 @@
 - Official Repository: https://github.com/sparklings/openconnectsg
 - Description: PowerShell automation wrapper for OpenConnect on Windows: DPAPI-secured, NSSM background service daemon with Wintun support and multi-profile management.
 - License: MIT License
-- Version: 1.0.3c
+- Version: 1.0.4
 - Target OS: Windows 10, Windows 11, Windows Server 2016, 2019, 2022 (x64)
 - Shell Dependency: Windows PowerShell 5.1+ (Engine Version 5.1.x)
 - Security Scope: Windows Data Protection API (DPAPI) `LocalMachine` scope
@@ -87,13 +87,14 @@ C:\Program Files\nssm\
 | `connect` | `up`, `start` | `[<profile>]` | Connects tunnel. Terminates other running openconnect tunnels (single-tunnel policy). Updates `default.txt`. |
 | `disconnect`| `down`, `stop` | `[<profile\|all>]` | Stops target service or all active tunnels via NSSM. |
 | `setup` | `add`, `install` | None | Launches interactive configuration wizard (`init-openconnectsg.ps1`). |
+| `tray` | `gui` | None | Launches WinForms notification-area tray GUI with real-time route hierarchy and network analyzer. |
 | `alias` | `label` | `<profile> <name>` | Writes friendly alias to `profiles\<name>\label.txt`. |
 | `default` | None | `<profile>` | Sets active default profile pointer in `profiles\default.txt`. |
 | `remove` | `rm`, `delete` | `<profile>` | Prompts confirmation (`yes`), stops service, deletes NSSM service, purges profile directory. |
 | `upgrade` | `update` | `[<source>]` | Deploys latest binaries to installation directory, updates marker, restarts active services. |
 | `uninstall` | `un`, `purge` | `[<scope>]` | Uninstalls openconnectsg (`app`: script/service/profiles only, `full`: complete purge including NSSM and OpenConnect CLI). |
 | `service-run`| None | `<service_name>`| **Internal daemon runner**: Mutex guard -> DPAPI Unprotect -> launch `openconnect.exe` -> pipe password via stdin. |
-| `version` | `-v`, `--version`| None | Outputs current tool version (`openconnectsg 1.0.3c`). |
+| `version` | `-v`, `--version`| None | Outputs current tool version (`openconnectsg 1.0.4`). |
 | `help` | `-h`, `--help` | None | Displays help usage screen. |
 
 ## 6. Identifier Resolution Engine (`Resolve-Profile`)

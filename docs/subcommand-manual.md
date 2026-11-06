@@ -240,7 +240,27 @@ openconnectsg <서브커맨드> [인자1] [인자2] ...
 
 ---
 
-### 3.6. `alias` / `label` (Assign Profile Alias)
+### 3.6. `tray` / `gui` (System Tray GUI & Network Route Inspector)
+
+Windows 시스템 트레이(알림 영역)에 상주하는 WinForms GUI 도구를 실행합니다.
+
+- **문법**:
+  ```powershell
+  openconnectsg tray
+  openconnectsg gui          # 호환 별칭
+  ```
+- **주요 기능**:
+  - 알림 영역 트레이 아이콘 색상으로 터널 연결 상태 실시간 표시 (초록=연결됨, 노랑=연결 중, 회색=연결 끊김)
+  - 메인 UI 창 및 트레이 우클릭 컨텍스트 메뉴에서 원클릭 프로필 연결/해제 제어
+  - 창 닫기(`X`) 클릭 시 백그라운드 트레이로 안전하게 최소화 (Close-to-tray)
+  - **네트워크 경로 분석**: 물리 Egress 어댑터(Wi-Fi SSID, 로컬 IP, 게이트웨이), VPN 가상 IP/DNS, Full vs Split 터널 판별
+  - **대역 계층도(Route Hierarchy View)**: 사설 및 공인 CIDR 대역을 트리 형태로 그룹화하여 시각화
+  - **주소 경로 조회기(Route Resolver)**: 특정 IP 또는 도메인이 VPN 터널 또는 로컬 물리망 중 어디로 라우팅되는지 실시간 조회
+  - **로그온 시 자동 실행**: 작업 스케줄러(`RunLevel=Highest`)를 통해 부팅 시 UAC 팝업 없이 트레이 무인 자동 기동 지원
+
+---
+
+### 3.7. `alias` / `label` (Assign Profile Alias)
 
 프로필을 번호나 복잡한 서비스명 대신 짧은 단어로 호출할 수 있도록 별칭(Alias)을 부여합니다.
 
@@ -418,7 +438,7 @@ openconnectsg <서브커맨드> [인자1] [인자2] ...
   \____/ .___/\___/_/ /_/\____/\____/_/ /_/_/ /_/\___/\___/\__/  /____/\__, /   
       /_/                                                             /____/    
    ==============================================================================
-    OpenConnectSg :: System Upgrade & Maintenance (v1.0.3c)
+    OpenConnectSg :: System Upgrade & Maintenance (v1.0.4)
    ==============================================================================
 
    [Step 1/3] Fetching latest release package...
@@ -431,11 +451,11 @@ openconnectsg <서브커맨드> [인자1] [인자2] ...
    [Step 2/3] Deploying updated binaries...
 
      Target Directory  : C:\Program Files\OpenConnect\bin
-     Target Version    : openconnectsg 1.0.3c (Current: 0.1.3b)
+     Target Version    : openconnectsg 1.0.4 (Current: 1.0.3c)
      Status            : Already up to date. No upgrade required.
 
    ==============================================================================
-    Already up to date! (openconnectsg 1.0.3c)
+    Already up to date! (openconnectsg 1.0.4)
     No changes were made to binaries or active background services.
    ==============================================================================
   ```
@@ -461,10 +481,10 @@ openconnectsg <서브커맨드> [인자1] [인자2] ...
   \____/ .___/\___/_/ /_/\____/\____/_/ /_/_/ /_/\___/\___/\__/  /____/\__, /   
       /_/                                                             /____/    
    ==============================================================================
-    OpenConnectSg :: System & Version Information (v1.0.3c)
+    OpenConnectSg :: System & Version Information (v1.0.4)
    ==============================================================================
 
-    Version       : openconnectsg 1.0.3c
+    Version       : openconnectsg 1.0.4
     Binary Path   : C:\Program Files\OpenConnect\bin
     Profiles Path : C:\Program Files\OpenConnect\profiles
     Repository    : https://github.com/sparklings/openconnectsg

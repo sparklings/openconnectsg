@@ -7,12 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [1.0.3c] - 2026-11-06
+## [1.0.4] - 2026-11-06
+
+### Added
+- **System Tray GUI (`src/openconnectsg-tray.ps1`, `openconnectsg tray`)**:
+  - Lightweight WinForms notification-area tray application (`openconnectsg tray` / `openconnectsg gui`).
+  - Real-time connection status icon (Green = Connected, Yellow = Connecting, Gray = Disconnected).
+  - Profile connection and disconnection controls from both main window and notification tray context menu.
+  - Close-to-tray window management: closing the UI window minimizes to the system tray rather than killing the tunnel.
+  - Optional "Start at Windows logon" checkbox: registers a highest-privilege scheduled task (`RunLevel=Highest`) to launch the tray without UAC prompts at logon.
+  - Integrated Start Menu shortcut (`OpenConnectSg`) generated upon installation.
+- **Network & Route Hierarchy Visualization**:
+  - Displays physical egress adapter details (Wi-Fi SSID, local IPv4, default gateway) utilized to reach the VPN gateway.
+  - Full vs Split Tunnel classification with real-time tunnel IP, DNS servers, and routed subnet ranges.
+  - Hierarchical CIDR subnet breakdown: groups private subnets (`10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`) and public ranges into nested containment trees, bundling subnets sharing common `/16` blocks.
+  - Address Route Resolver: interactive search box allowing users to input any IP or hostname to determine whether traffic routes over the VPN or the physical internet gateway.
 
 ### Fixed
 - **Administrative Privilege Verification & Seamless UAC Elevation (`Ensure-AdminPrivilege`)**:
   - Implemented automatic administrative privilege verification across `connect`, `disconnect`, `setup`, `remove`, `upgrade`, and `uninstall` commands.
   - Automatically requests UAC elevation in standard (non-elevated) PowerShell sessions, eliminating silent `Access is denied (5)` Windows Service Control Manager failures (resolves #4).
+- **Single Auto-Start Tunnel Policy (`Set-AutoStartProfile`)**:
+  - Enforced that only the active/default profile maintains `Automatic` startup type; all other `openconnect_*` services are set to `Manual`, preventing multiple conflicting tunnels from auto-starting on system reboot.
+- **Installer Self-Deletion Prevention (`install-openconnectsg.ps1`)**:
+  - Fixed condition where default `-RepoUrl` parameter triggered a re-clone that deleted the active local repository folder the script was running from.
 - **NSSM Error Visibility & Propagation (`Invoke-Nssm`)**:
   - Eliminated `2>$null` error silencing during NSSM command execution.
   - Captured standard error streams (`2>&1`) to directly surface descriptive failure causes (e.g. Access Denied, missing service, SCM communication timeout) to the user console.

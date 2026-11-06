@@ -34,6 +34,7 @@
 - `openconnectsg setup` / `openconnectsg add`: Interactive wizard to register a new VPN profile and start its service.
 - `openconnectsg connect <profile>` / `openconnectsg up <profile>`: Connect to profile (stops competing tunnels).
 - `openconnectsg disconnect [<profile|all>]` / `openconnectsg down`: Disconnect specific or all active tunnels.
+- `openconnectsg tray` / `openconnectsg gui`: Open WinForms notification-area tray GUI with real-time route inspector.
 - `openconnectsg alias <profile> <alias_name>`: Assign friendly shortcut alias to a profile.
 - `openconnectsg default <profile>`: Set default fallback profile.
 - `openconnectsg remove <profile>` / `openconnectsg rm <profile>`: Stop service, unregister NSSM daemon, and delete profile directory.

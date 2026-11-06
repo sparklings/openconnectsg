@@ -52,7 +52,8 @@ if ($Uninstall) {
 }
 
 # Auto-detect local source directory
-if (-not $SkipClone -and [string]::IsNullOrWhiteSpace($RepoUrl)) {
+# (default -RepoUrl must not trigger a re-clone that deletes the repo this script runs from)
+if (-not $SkipClone -and -not $PSBoundParameters.ContainsKey('RepoUrl')) {
   $candidate = Split-Path -Parent $PSScriptRoot
   if (Test-Path (Join-Path $candidate 'src\openconnectsg.ps1')) {
     $SkipClone = $true
@@ -112,6 +113,23 @@ Copy-Item (Join-Path $srcBin 'openconnectsg.ps1')     $BinDir -Force
 Copy-Item (Join-Path $srcBin 'openconnectsg.cmd')     $BinDir -Force
 Copy-Item $initSrc                                     $BinDir -Force
 Copy-Item (Join-Path $PSScriptRoot 'install-openconnectsg.ps1') $BinDir -Force
+$traySrc = Join-Path $srcBin 'openconnectsg-tray.ps1'
+if (Test-Path $traySrc) {
+  Copy-Item $traySrc $BinDir -Force
+  # Start Menu shortcut for the tray GUI (all users)
+  try {
+    $lnkPath = Join-Path $env:ProgramData 'Microsoft\Windows\Start Menu\Programs\OpenConnectSg.lnk'
+    $wsh = New-Object -ComObject WScript.Shell
+    $lnk = $wsh.CreateShortcut($lnkPath)
+    $lnk.TargetPath = (Get-Command powershell.exe).Source
+    $lnk.Arguments  = "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$(Join-Path $BinDir 'openconnectsg-tray.ps1')`""
+    $lnk.WorkingDirectory = $BinDir
+    $lnk.Description = 'OpenConnectSg VPN tray'
+    $lnk.IconLocation = "$env:SystemRoot\System32\shell32.dll,18"
+    $lnk.Save()
+    Write-Host "Start Menu shortcut created: $lnkPath"
+  } catch { Write-Warning "Could not create Start Menu shortcut: $($_.Exception.Message)" }
+}
 Write-Host "Files deployed successfully to $BinDir"
 
 # Register system PATH (duplicate prevention)
@@ -127,7 +145,7 @@ if (-not (($mp -split ';') -contains $BinDir)) {
 $cmd = Join-Path $BinDir 'openconnectsg.cmd'
 if (Test-Path $cmd) {
   $deployedPs1 = Join-Path $BinDir 'openconnectsg.ps1'
-  $ver = '1.0.3c'
+  $ver = '1.0.4'
   if (Test-Path $deployedPs1) {
     $vLine = Get-Content $deployedPs1 -ErrorAction SilentlyContinue | Where-Object { $_ -match '^\$script:Version\s*=\s*[''"]([^''"]+)[''"]' } | Select-Object -First 1
     if ($vLine -and $vLine -match '^\$script:Version\s*=\s*[''"]([^''"]+)[''"]') {
