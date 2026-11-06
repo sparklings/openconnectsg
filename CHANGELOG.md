@@ -7,13 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [v0.1.3c] - 2026-11-06
+## [1.0.3e] - 2026-11-06
 
 ### Fixed
-- **Administrative Privilege Verification & UAC Elevation**: Implemented `Ensure-AdminPrivilege` to automatically check for elevated administrative rights across `connect`, `disconnect`, `remove`, `upgrade`, and `uninstall` commands. Resolves silent failure in non-elevated PowerShell sessions (closes #4).
-- **NSSM Error Visibility & Propagation**: Removed `2>$null` suppression in `Invoke-Nssm` and captured standard error streams; surfaces descriptive error reasons (e.g., Access Denied, service missing) during service operations.
-- **Accurate Disconnection Status Reporting**: Fixed logic in `Do-Disconnect` that previously outputted green `Status: Disconnected` even when service termination failed; now reports `Status: Failed to Disconnect` with proper non-zero exit codes.
-- **Process Tree Cleanup & Orphan Prevention (`Stop-TunnelProcess`)**: Ensured guaranteed termination of child `openconnect.exe` processes and removal of orphaned Wintun network adapters upon tunnel disconnection, and added process kill guard in `Do-ServiceRun` `finally` block.
+- **Administrative Privilege Verification & Seamless UAC Elevation (`Ensure-AdminPrivilege`)**:
+  - Implemented automatic administrative privilege verification across `connect`, `disconnect`, `setup`, `remove`, `upgrade`, and `uninstall` commands.
+  - Automatically requests UAC elevation in standard (non-elevated) PowerShell sessions, eliminating silent `Access is denied (5)` Windows Service Control Manager failures (resolves #4).
+- **NSSM Error Visibility & Propagation (`Invoke-Nssm`)**:
+  - Eliminated `2>$null` error silencing during NSSM command execution.
+  - Captured standard error streams (`2>&1`) to directly surface descriptive failure causes (e.g. Access Denied, missing service, SCM communication timeout) to the user console.
+- **Accurate Disconnection Status Reporting (`Do-Disconnect`)**:
+  - Fixed misleading green `Status: Disconnected` display on service termination failure.
+  - Now accurately reports red `Status: Failed to Disconnect` with non-zero exit codes whenever one or more services fail to stop gracefully.
+- **Process Tree Cleanup & Orphan/Wintun Residual Prevention (`Stop-TunnelProcess`)**:
+  - Implemented proactive 2-stage shutdown: queries and forcefully terminates (`Stop-Process -Force`) any lingering `openconnect.exe` child processes if NSSM does not reach Stopped state within 5 seconds.
+  - Automatically scans and removes orphaned Wintun kernel tunnel adapters in error state (`CM_PROB_DISABLED_SERVICE`) via `pnputil /remove-device`.
+  - Added child process kill guard and stdin stream closure in `Do-ServiceRun` `finally` block to prevent daemon runner terminations from leaving orphaned background processes.
 
 ---
 

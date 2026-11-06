@@ -13,7 +13,7 @@
 $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $OutputEncoding = [System.Text.Encoding]::UTF8
-$script:Version = '0.1.3c'
+$script:Version = '1.0.3e'
 
 $programFiles = if ([string]::IsNullOrWhiteSpace($env:ProgramFiles)) { 'C:\Program Files' } else { $env:ProgramFiles }
 $ocRoot       = Join-Path $programFiles 'OpenConnect'
@@ -170,8 +170,6 @@ function Resolve-Profile {
   throw ("Multiple profiles match '{0}'. Please be more specific: {1}" -f $token, (($hit | ForEach-Object { $_.Name }) -join ', '))
 }
 
-$script:LastNssmError = $null
-
 function Assert-Nssm {
   if (-not (Test-Path $nssm)) {
     throw "NSSM binary not found at $nssm. Please run 'openconnectsg setup' first."
@@ -183,13 +181,9 @@ function Invoke-Nssm {
   Assert-Nssm
   $prev = $ErrorActionPreference
   $ErrorActionPreference = 'SilentlyContinue'
-  $script:LastNssmError = $null
-  $out = & $nssm @Argv 2>&1
+  & $nssm @Argv 2>$null | Out-Null
   $code = $LASTEXITCODE
   $ErrorActionPreference = $prev
-  if ($code -ne 0 -and $out) {
-    $script:LastNssmError = ($out | Out-String).Trim()
-  }
   return $code
 }
 
@@ -205,100 +199,8 @@ function Wait-ServiceStatus {
   if ($s) { return [string]$s.Status } else { return 'N/A' }
 }
 
-function Test-IsAdmin {
-  try {
-    $id = [System.Security.Principal.WindowsIdentity]::GetCurrent()
-    $p = New-Object System.Security.Principal.WindowsPrincipal($id)
-    return $p.IsInRole([System.Security.Principal.WindowsBuiltInRole]::Administrator)
-  } catch {
-    return $false
-  }
-}
-
-function Ensure-AdminPrivilege {
-  param(
-    [string]$ActionName,
-    [string[]]$CommandArgs
-  )
-  if (Test-IsAdmin) { return }
-
-  Write-Host ""
-  Write-Host " [Elevation Required]" -ForegroundColor Yellow
-  Write-Host "   Administrative privileges are required to $ActionName openconnectsg tunnels/services." -ForegroundColor White
-  Write-Host "   Requesting elevation via User Account Control (UAC)..." -ForegroundColor DarkCyan
-
-  $selfPath = $MyInvocation.MyCommand.Definition
-  if ([string]::IsNullOrWhiteSpace($selfPath) -or -not (Test-Path $selfPath)) {
-    $selfPath = Join-Path $binDir 'openconnectsg.ps1'
-  }
-  if (-not (Test-Path $selfPath)) {
-    $selfPath = Join-Path $PSScriptRoot 'openconnectsg.ps1'
-  }
-
-  $escapedArgs = ($CommandArgs | ForEach-Object { if ($_ -match '\s') { "'$_'" } else { $_ } }) -join ' '
-  $argStr = "-NoProfile -ExecutionPolicy Bypass -Command `"& '$selfPath' $escapedArgs; Write-Host ''; Read-Host 'Press Enter to close this window...'`""
-
-  try {
-    $p = Start-Process powershell.exe -Verb RunAs -ArgumentList $argStr -PassThru
-    Write-Host "   UAC prompt initiated (Process ID: $($p.Id)). Please approve to continue." -ForegroundColor DarkCyan
-    Write-Host ""
-    $p.WaitForExit()
-    exit $p.ExitCode
-  } catch {
-    try {
-      $sh = New-Object -ComObject Shell.Application
-      $sh.ShellExecute("powershell.exe", $argStr, "", "runas", 1)
-      Write-Host "   UAC prompt initiated via ShellExecute. Please approve to continue." -ForegroundColor DarkCyan
-      Write-Host ""
-      exit 0
-    } catch {
-      throw "Administrative privileges are required for '$ActionName'. Please run openconnectsg from an elevated Administrator PowerShell console."
-    }
-  }
-}
-
-function Stop-TunnelProcess {
-  param([string]$ServiceName)
-  [void](Invoke-Nssm @('stop', $ServiceName))
-  $final = Wait-ServiceStatus $ServiceName 'Stopped' 15
-
-  # Terminate any lingering openconnect.exe processes associated with this profile
-  $pDir = Join-Path $root $ServiceName
-  $confPath = Join-Path $pDir 'openconnect.conf'
-  try {
-    $procs = Get-CimInstance Win32_Process -Filter "Name = 'openconnect.exe'" -ErrorAction SilentlyContinue
-    foreach ($p in $procs) {
-      if ($p.CommandLine -and ($p.CommandLine -like "*$confPath*" -or $p.CommandLine -like "*$ServiceName*")) {
-        Stop-Process -Id $p.ProcessId -Force -ErrorAction SilentlyContinue
-      }
-    }
-  } catch {}
-
-  # Clean up any stale Wintun devices in error state
-  try {
-    Get-PnpDevice -Class Net -ErrorAction SilentlyContinue | Where-Object {
-      $_.InstanceId -like "*WINTUN*" -and ($_.Status -ne 'OK' -or $_.Problem -ne 'CM_PROB_NONE')
-    } | ForEach-Object {
-      & pnputil /remove-device $_.InstanceId 2>&1 | Out-Null
-    }
-  } catch {}
-
-  if ($final -eq 'Stopped') {
-    $errPath = Join-Path $pDir 'logs\err.log'
-    if (Test-Path $errPath) { try { Set-Content -Path $errPath -Value $null -Force } catch {} }
-    $hbPath = Join-Path $pDir 'heartbeat.status'
-    if (Test-Path $hbPath) { try { Set-Content -Path $hbPath -Value "LastReceived=$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')`r`nCount=0`r`nStatus=STOPPED`r`n" -Force } catch {} }
-  }
-
-  return ($final -eq 'Stopped')
-}
-
 function Do-Connect {
   param($profiles, $token)
-  $callArgs = @('connect')
-  if (-not [string]::IsNullOrWhiteSpace($token)) { $callArgs += $token }
-  Ensure-AdminPrivilege 'connect' $callArgs
-
   $t = Resolve-Profile $profiles $token
   $profConf = Join-Path (Join-Path $root $t.Name) 'openconnect.conf'
   if (Test-Path $profConf) {
@@ -324,7 +226,7 @@ function Do-Connect {
     Write-Host " [1/2] Enforcing single-tunnel policy..." -ForegroundColor Cyan
     foreach ($p in $otherRunning) {
       Write-Host "   Disconnecting other active session: $($p.Name)..." -ForegroundColor Gray
-      [void](Stop-TunnelProcess $p.Name)
+      [void](Invoke-Nssm @('stop', $p.Name))
     }
     Write-Host "   Conflicting sessions closed." -ForegroundColor Green
     Write-Host ""
@@ -345,7 +247,7 @@ function Do-Connect {
   Write-Host "   Target Service : $($t.Name)" -ForegroundColor White
   if ($cur -and [string]$cur.Status -ne 'Stopped' -and [string]$cur.Status -ne 'Running') {
     Write-Host "   Resetting previous session state ($($cur.Status))..." -ForegroundColor Gray
-    [void](Stop-TunnelProcess $t.Name)
+    [void](Invoke-Nssm @('stop', $t.Name))
     [void](Wait-ServiceStatus $t.Name 'Stopped' 10)
   }
 
@@ -386,9 +288,6 @@ function Do-Connect {
       Write-Host "   - Invalid password or prompt timeout." -ForegroundColor White
     } else {
       Write-Host "   Service failed to reach Running state (Current: $final)" -ForegroundColor Yellow
-      if ($script:LastNssmError) {
-        Write-Host "   Service error: $script:LastNssmError" -ForegroundColor Red
-      }
       if (-not [string]::IsNullOrWhiteSpace($combined.Trim())) {
         Write-Host "   $($combined.Trim())" -ForegroundColor Gray
       }
@@ -414,10 +313,6 @@ function Do-Connect {
 
 function Do-Disconnect {
   param($profiles, $token)
-  $callArgs = @('disconnect')
-  if (-not [string]::IsNullOrWhiteSpace($token)) { $callArgs += $token }
-  Ensure-AdminPrivilege 'disconnect' $callArgs
-
   Write-Host ""
   Write-Host " ==============================================================================" -ForegroundColor DarkGray
   Write-Host "  OpenConnectSg :: Disconnect" -ForegroundColor White
@@ -433,25 +328,23 @@ function Do-Disconnect {
       Write-Host " Stopping active tunnels:" -ForegroundColor Cyan
       foreach ($p in $runningProfiles) {
         Write-Host "   - $($p.Name) ... " -NoNewline
-        $stopped = Stop-TunnelProcess $p.Name
-        if (-not $stopped) {
+        [void](Invoke-Nssm @('stop', $p.Name))
+        if ((Wait-ServiceStatus $p.Name 'Stopped' 15) -ne 'Stopped') {
           Write-Host "Failed to stop." -ForegroundColor Yellow
-          if ($script:LastNssmError) {
-            Write-Host "     Reason: $script:LastNssmError" -ForegroundColor Red
-          }
           $rc = 1
         } else {
+          $pDir = Join-Path $root $p.Name
+          $errPath = Join-Path $pDir 'logs\err.log'
+          if (Test-Path $errPath) { try { Set-Content -Path $errPath -Value $null -Force } catch {} }
+          $hbPath = Join-Path $pDir 'heartbeat.status'
+          if (Test-Path $hbPath) { try { Set-Content -Path $hbPath -Value "LastReceived=$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')`r`nCount=0`r`nStatus=STOPPED`r`n" -Force } catch {} }
           Write-Host "Stopped." -ForegroundColor Green
         }
       }
     }
     Write-Host ""
     Write-Host " ==============================================================================" -ForegroundColor DarkGray
-    if ($rc -eq 0) {
-      Write-Host "  Status: Disconnected" -ForegroundColor Green
-    } else {
-      Write-Host "  Status: Failed to Disconnect" -ForegroundColor Red
-    }
+    Write-Host "  Status: Disconnected" -ForegroundColor Green
     Write-Host " ==============================================================================" -ForegroundColor DarkGray
     Write-Host ""
     return $rc
@@ -460,21 +353,26 @@ function Do-Disconnect {
   $t = Resolve-Profile $profiles $token
   Write-Host " Stopping tunnel:" -ForegroundColor Cyan
   Write-Host "   - $($t.Name) ... " -NoNewline
-  $stopped = Stop-TunnelProcess $t.Name
-  if (-not $stopped) {
-    $cur = Get-Service -Name $t.Name -ErrorAction SilentlyContinue
-    $st = if ($cur) { $cur.Status } else { 'Unknown' }
-    Write-Host "Failed (Current: $st)" -ForegroundColor Yellow
-    if ($script:LastNssmError) {
-      Write-Host "     Reason: $script:LastNssmError" -ForegroundColor Red
-    }
+  [void](Invoke-Nssm @('stop', $t.Name))
+  $final = Wait-ServiceStatus $t.Name 'Stopped' 15
+  if ($final -ne 'Stopped') {
+    Write-Host "Failed (Current: $final)" -ForegroundColor Yellow
     Write-Host ""
     Write-Host " ==============================================================================" -ForegroundColor DarkGray
     Write-Host "  Warning: Service did not stop gracefully." -ForegroundColor Yellow
-    Write-Host "  Status: Failed to Disconnect" -ForegroundColor Red
     Write-Host " ==============================================================================" -ForegroundColor DarkGray
     Write-Host ""
     return 1
+  }
+  # Clean up stale error logs and update heartbeat on graceful stop
+  $pDir = Join-Path $root $t.Name
+  $errPath = Join-Path $pDir 'logs\err.log'
+  if (Test-Path $errPath) {
+    try { Set-Content -Path $errPath -Value $null -Force } catch {}
+  }
+  $hbPath = Join-Path $pDir 'heartbeat.status'
+  if (Test-Path $hbPath) {
+    try { Set-Content -Path $hbPath -Value "LastReceived=$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')`r`nCount=0`r`nStatus=STOPPED`r`n" -Force } catch {}
   }
 
   Write-Host "Stopped." -ForegroundColor Green
@@ -654,7 +552,6 @@ function Do-Remove {
   if ([string]::IsNullOrWhiteSpace($token)) {
     throw 'Please specify a profile to remove. Syntax: openconnectsg remove <profile>'
   }
-  Ensure-AdminPrivilege 'remove' @('remove', $token)
   $t = Resolve-Profile $profiles $token
 
   Write-Host ""
@@ -676,7 +573,7 @@ function Do-Remove {
 
   Write-Host ""
   Write-Host " Removing profile and service..." -ForegroundColor Cyan
-  [void](Stop-TunnelProcess $t.Name)
+  [void](Invoke-Nssm @('stop', $t.Name))
   Write-Host "   - Service stopped" -ForegroundColor Gray
   [void](Invoke-Nssm @('remove', $t.Name, 'confirm'))
   Write-Host "   - Service unregistered" -ForegroundColor Gray
@@ -706,9 +603,18 @@ function Do-Setup {
 
 function Do-Uninstall {
   param([string]$ScopeArg)
-  $uninstallArgs = @('uninstall')
-  if (-not [string]::IsNullOrWhiteSpace($ScopeArg)) { $uninstallArgs += $ScopeArg }
-  Ensure-AdminPrivilege 'uninstall' $uninstallArgs
+
+  # Check administrative privileges
+  $isAdmin = $false
+  try {
+    $id = [System.Security.Principal.WindowsIdentity]::GetCurrent()
+    $p = New-Object System.Security.Principal.WindowsPrincipal($id)
+    $isAdmin = $p.IsInRole([System.Security.Principal.WindowsBuiltInRole]::Administrator)
+  } catch { }
+
+  if (-not $isAdmin) {
+    throw "Administrative privileges are required to uninstall. Please run in an elevated administrator shell."
+  }
 
   Write-Host ""
   Write-Host " ==============================================================================" -ForegroundColor DarkGray
@@ -882,19 +788,48 @@ function Do-Upgrade {
 
   $force = $false
   $token = $null
-  $upgradeArgs = @('upgrade')
   foreach ($a in @($arg1, $arg2)) {
     if ([string]::IsNullOrWhiteSpace($a)) { continue }
     if ($a -match '^(-f|--force|/f)$') {
       $force = $true
-      $upgradeArgs += '--force'
     } elseif (-not $token) {
       $token = $a
-      $upgradeArgs += $a
     }
   }
 
-  Ensure-AdminPrivilege 'upgrade' $upgradeArgs
+  $wp = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
+  $isAdmin = $wp.IsInRole([System.Security.Principal.WindowsBuiltInRole]::Administrator)
+  if (-not $isAdmin) {
+    Write-Host ""
+    Write-Host " [Elevation Required]" -ForegroundColor Yellow
+    Write-Host "   Administrative privileges are required to upgrade openconnectsg." -ForegroundColor White
+    Write-Host "   Requesting elevation via User Account Control (UAC)..." -ForegroundColor DarkCyan
+    $selfPath = $MyInvocation.MyCommand.Definition
+    if ([string]::IsNullOrWhiteSpace($selfPath) -or -not (Test-Path $selfPath)) {
+      $selfPath = Join-Path $binDir 'openconnectsg.ps1'
+    }
+    $argStr = "-NoProfile -ExecutionPolicy Bypass -Command `"& '$selfPath' upgrade"
+    if (-not [string]::IsNullOrWhiteSpace($token)) { $argStr += " '$token'" }
+    if ($force) { $argStr += " --force" }
+    $argStr += "; Write-Host ''; Read-Host 'Press Enter to close this window...'`""
+
+    try {
+      $p = Start-Process powershell.exe -Verb RunAs -ArgumentList $argStr -PassThru
+      Write-Host "   UAC prompt initiated (Process ID: $($p.Id)). Please approve to continue." -ForegroundColor DarkCyan
+      Write-Host ""
+      return 0
+    } catch {
+      try {
+        $sh = New-Object -ComObject Shell.Application
+        $sh.ShellExecute("powershell.exe", $argStr, "", "runas", 1)
+        Write-Host "   UAC prompt initiated via ShellExecute. Please approve to continue." -ForegroundColor DarkCyan
+        Write-Host ""
+        return 0
+      } catch {
+        throw "Failed to elevate process. Please run 'openconnectsg upgrade' from an administrator PowerShell console."
+      }
+    }
+  }
 
   Show-Banner "System Upgrade & Maintenance"
 
@@ -1221,9 +1156,6 @@ namespace OpenConnectSg {
     exit $proc.ExitCode
   } finally {
     $pw = $null
-    if ($proc -and -not $proc.HasExited) {
-      try { $proc.Kill() } catch {}
-    }
     try { $mutex.ReleaseMutex() } catch {}
   }
 }

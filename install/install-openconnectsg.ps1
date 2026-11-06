@@ -127,7 +127,7 @@ if (-not (($mp -split ';') -contains $BinDir)) {
 $cmd = Join-Path $BinDir 'openconnectsg.cmd'
 if (Test-Path $cmd) {
   $deployedPs1 = Join-Path $BinDir 'openconnectsg.ps1'
-  $ver = '0.1.3c'
+  $ver = '1.0.3e'
   if (Test-Path $deployedPs1) {
     $vLine = Get-Content $deployedPs1 -ErrorAction SilentlyContinue | Where-Object { $_ -match '^\$script:Version\s*=\s*[''"]([^''"]+)[''"]' } | Select-Object -First 1
     if ($vLine -and $vLine -match '^\$script:Version\s*=\s*[''"]([^''"]+)[''"]') {
