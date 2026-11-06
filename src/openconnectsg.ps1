@@ -187,6 +187,16 @@ function Invoke-Nssm {
   return $code
 }
 
+# Only the given profile's service auto-starts at boot; all others are set to Manual
+# so that a reboot never brings up multiple tunnels at once.
+function Set-AutoStartProfile {
+  param([string]$Name)
+  foreach ($s in @(Get-Service -Name 'openconnect_*' -ErrorAction SilentlyContinue)) {
+    $want = if ($s.Name -eq $Name) { 'Automatic' } else { 'Manual' }
+    try { Set-Service -Name $s.Name -StartupType $want -ErrorAction Stop } catch { }
+  }
+}
+
 function Wait-ServiceStatus {
   param([string]$Name, [string]$Want, [int]$TimeoutSec = 15)
   for ($n = 0; $n -lt $TimeoutSec; $n++) {
@@ -253,6 +263,7 @@ function Do-Connect {
 
   [void](Invoke-Nssm @('start', $t.Name))
   Set-Content $defaultFile $t.Name -NoNewline -Encoding ascii
+  Set-AutoStartProfile $t.Name
 
   Write-Host "   Waiting for running status..." -ForegroundColor Gray
   $final = Wait-ServiceStatus $t.Name 'Running' 15
@@ -518,6 +529,7 @@ function Do-Default {
   }
   $t = Resolve-Profile $profiles $token
   Set-Content $defaultFile $t.Name -NoNewline -Encoding ascii
+  Set-AutoStartProfile $t.Name
   Write-Host ""
   Write-Host " ==============================================================================" -ForegroundColor DarkGray
   Write-Host "  OpenConnectSg :: Set Default Profile" -ForegroundColor White

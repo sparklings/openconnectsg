@@ -52,7 +52,8 @@ if ($Uninstall) {
 }
 
 # Auto-detect local source directory
-if (-not $SkipClone -and [string]::IsNullOrWhiteSpace($RepoUrl)) {
+# (default -RepoUrl must not trigger a re-clone that deletes the repo this script runs from)
+if (-not $SkipClone -and -not $PSBoundParameters.ContainsKey('RepoUrl')) {
   $candidate = Split-Path -Parent $PSScriptRoot
   if (Test-Path (Join-Path $candidate 'src\openconnectsg.ps1')) {
     $SkipClone = $true

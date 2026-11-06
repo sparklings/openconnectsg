@@ -525,9 +525,21 @@ Set-ItemProperty $base Start -Value SERVICE_AUTO_START
 Set-ItemProperty $key  DisplayName $dispName
 Set-Service -Name $svcName -StartupType Automatic
 
-Write-Host "Starting service '$svcName'..."
 $prevEAP = $ErrorActionPreference
 $ErrorActionPreference = 'SilentlyContinue'
+
+# Single active connection policy: only the new (default) profile auto-starts at boot,
+# and any other running tunnel is stopped before the new one starts.
+$otherSvcs = @(Get-Service -Name 'openconnect_*' -ErrorAction SilentlyContinue | Where-Object { $_.Name -ne $svcName })
+foreach ($o in $otherSvcs) {
+  Set-Service -Name $o.Name -StartupType Manual
+  if ([string]$o.Status -eq 'Running') {
+    Write-Host "Stopping other active tunnel '$($o.Name)' (single-tunnel policy)..."
+    & $nssmExe stop $o.Name *>$null
+  }
+}
+
+Write-Host "Starting service '$svcName'..."
 & $nssmExe start $svcName *>$null
 $ErrorActionPreference = $prevEAP
 
