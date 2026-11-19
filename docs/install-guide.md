@@ -88,11 +88,16 @@ powershell -ExecutionPolicy Bypass -File "C:\Program Files\OpenConnect\repo\inst
 
 ### Method B. One-Line Web Automatic Install (Without Git)
 
-Git이나 개발 도구가 없어도 PowerShell 기본 명령어로 원격 최신 코드를 즉시 내려받아 설치합니다:
+Git이나 개발 도구가 없어도 PowerShell 기본 명령어로 원격 최신 코드를 즉시 내려받아 설치합니다 (관리자 권한 PowerShell 세션 필요):
 
 ```powershell
 irm https://raw.githubusercontent.com/sparklings/openconnectsg/main/install/install-openconnectsg.ps1 | iex
 ```
+
+> **참고**: 기업 네트워크 환경이나 보안 정책으로 인해 파이프라인(`| iex`) 직접 실행이 제한되거나 세션 제약이 발생하는 경우, 임시 파일로 다운로드 후 실행하는 원라인 명령어를 사용할 수 있습니다:
+> ```powershell
+> $tmp = "$env:TEMP\install-openconnectsg.ps1"; irm https://raw.githubusercontent.com/sparklings/openconnectsg/main/install/install-openconnectsg.ps1 -OutFile $tmp; powershell -ExecutionPolicy Bypass -File $tmp; Remove-Item $tmp -Force
+> ```
 
 ### Method C. Offline / Manual ZIP Download Installation
 
@@ -316,3 +321,12 @@ powershell -ExecutionPolicy Bypass -File .\install\install-openconnectsg.ps1 -Un
   - `Permission denied`: 계정 정보는 유효하나 방화벽 측 SSL-VPN 인가(Authorization) 정책 또는 그룹 권한에 매핑되지 않은 경우입니다.
   - `Too many bad login attempts`: 연속적인 시도로 인해 방화벽의 브루트포스 차단 타이머가 작동한 상태입니다.
 * **조치**: 차단 타이머의 경우 3~5분 정도 대기 후 다시 시도하시고, 인가 문제는 네트워크 관리자에게 사용자 계정의 SSL-VPN 접근 그룹 권한을 확인하십시오.
+
+### Q6. Error: "'Path' 매개 변수가 빈 문자열이므로 인수를 해당 매개 변수에 바인딩할 수 없습니다" (`irm | iex` 실행 시)
+* **원인**: `irm ... | iex` 명령은 스크립트를 파일이 아닌 메모리 스트림으로 직접 실행하므로, 자동 변수인 `$PSScriptRoot`가 빈 문자열(`""`)로 설정됩니다. 이전 버전 스크립트에서 `$PSScriptRoot`에 대한 유효성 검사 없이 `Split-Path`를 호출하여 매개 변수 바인딩 예외가 발생한 현상입니다.
+* **조치**: 
+  1. 최신 `install-openconnectsg.ps1` 스크립트에서 `$PSScriptRoot` 유효성 검사 및 소스 디렉터리 폴백 로직이 적용되어 자동으로 해결되었습니다.
+  2. 만약 구버전 스크립트 캐시 등의 이유로 동일 오류가 발생할 경우 아래와 같이 임시 파일로 다운로드 후 실행하십시오:
+     ```powershell
+     $tmp = "$env:TEMP\install-openconnectsg.ps1"; irm https://raw.githubusercontent.com/sparklings/openconnectsg/main/install/install-openconnectsg.ps1 -OutFile $tmp; powershell -ExecutionPolicy Bypass -File $tmp; Remove-Item $tmp -Force
+     ```

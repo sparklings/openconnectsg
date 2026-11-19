@@ -40,7 +40,7 @@ if ([string]::IsNullOrWhiteSpace($BinDir)) { $BinDir = Join-Path $ocRoot 'bin' }
 
 if ($Uninstall) {
   $targetPs1 = Join-Path $BinDir 'openconnectsg.ps1'
-  if (-not (Test-Path $targetPs1)) {
+  if (-not (Test-Path $targetPs1) -and -not [string]::IsNullOrWhiteSpace($PSScriptRoot)) {
     $targetPs1 = Join-Path (Join-Path (Split-Path -Parent $PSScriptRoot) 'src') 'openconnectsg.ps1'
   }
   if (Test-Path $targetPs1) {
@@ -54,16 +54,20 @@ if ($Uninstall) {
 # Auto-detect local source directory
 # (default -RepoUrl must not trigger a re-clone that deletes the repo this script runs from)
 if (-not $SkipClone -and -not $PSBoundParameters.ContainsKey('RepoUrl')) {
-  $candidate = Split-Path -Parent $PSScriptRoot
-  if (Test-Path (Join-Path $candidate 'src\openconnectsg.ps1')) {
-    $SkipClone = $true
-    $SourceDir = $candidate
+  if (-not [string]::IsNullOrWhiteSpace($PSScriptRoot)) {
+    $candidate = Split-Path -Parent $PSScriptRoot
+    if (Test-Path (Join-Path $candidate 'src\openconnectsg.ps1')) {
+      $SkipClone = $true
+      $SourceDir = $candidate
+    }
   }
 }
 
 # Acquire source files
 if ($SkipClone) {
-  if ([string]::IsNullOrWhiteSpace($SourceDir)) { $SourceDir = Split-Path -Parent $PSScriptRoot }
+  if ([string]::IsNullOrWhiteSpace($SourceDir) -and -not [string]::IsNullOrWhiteSpace($PSScriptRoot)) {
+    $SourceDir = Split-Path -Parent $PSScriptRoot
+  }
   if ([string]::IsNullOrWhiteSpace($SourceDir)) { $SourceDir = (Get-Location).Path }
   Write-Host "Installing from local source: $SourceDir"
 } else {
@@ -112,7 +116,17 @@ New-Item -ItemType Directory -Path $BinDir -Force | Out-Null
 Copy-Item (Join-Path $srcBin 'openconnectsg.ps1')     $BinDir -Force
 Copy-Item (Join-Path $srcBin 'openconnectsg.cmd')     $BinDir -Force
 Copy-Item $initSrc                                     $BinDir -Force
-Copy-Item (Join-Path $PSScriptRoot 'install-openconnectsg.ps1') $BinDir -Force
+
+$installerSrc = if (-not [string]::IsNullOrWhiteSpace($PSScriptRoot) -and (Test-Path (Join-Path $PSScriptRoot 'install-openconnectsg.ps1'))) {
+  Join-Path $PSScriptRoot 'install-openconnectsg.ps1'
+} elseif (Test-Path (Join-Path $SourceDir 'install\install-openconnectsg.ps1')) {
+  Join-Path $SourceDir 'install\install-openconnectsg.ps1'
+} else {
+  $null
+}
+if ($installerSrc) {
+  Copy-Item $installerSrc $BinDir -Force
+}
 $traySrc = Join-Path $srcBin 'openconnectsg-tray.ps1'
 if (Test-Path $traySrc) {
   Copy-Item $traySrc $BinDir -Force
@@ -145,7 +159,7 @@ if (-not (($mp -split ';') -contains $BinDir)) {
 $cmd = Join-Path $BinDir 'openconnectsg.cmd'
 if (Test-Path $cmd) {
   $deployedPs1 = Join-Path $BinDir 'openconnectsg.ps1'
-  $ver = '1.0.4a'
+  $ver = '1.0.4b'
   if (Test-Path $deployedPs1) {
     $vLine = Get-Content $deployedPs1 -ErrorAction SilentlyContinue | Where-Object { $_ -match '^\$script:Version\s*=\s*[''"]([^''"]+)[''"]' } | Select-Object -First 1
     if ($vLine -and $vLine -match '^\$script:Version\s*=\s*[''"]([^''"]+)[''"]') {

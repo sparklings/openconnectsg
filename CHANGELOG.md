@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.0.4b] - 2026-11-19
+
+### Fixed
+- **One-Line Web Install Compatibility (`irm ... | iex`)**:
+  - Fixed `ParameterArgumentValidationErrorEmptyStringNotAllowed` error when executing `install-openconnectsg.ps1` via `Invoke-Expression` (`iex`) where `$PSScriptRoot` is empty.
+  - Added null/empty string guards before calling `Split-Path -Parent $PSScriptRoot` across local source detection and uninstallation routines.
+  - Implemented robust fallback logic for installer self-copy (`$installerSrc`), sourcing from `$SourceDir\install\install-openconnectsg.ps1` when executed from an in-memory stream.
+- **Documentation**:
+  - Updated `docs/install-guide.md` Method B with alternative one-line command and added troubleshooting FAQ entry Q6 explaining `$PSScriptRoot` evaluation under `iex`.
+
+---
+
 ## [1.0.4a] - 2026-11-06
 
 ### Fixed
