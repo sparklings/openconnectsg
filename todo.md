@@ -113,6 +113,66 @@
 
 ---
 
+## 🎨 [Feature] System Tray GUI UI/UX & Reliability Modernization (트레이 GUI 개선)
+
+### 1. 개요 및 개선 배경
+- **현행 문제점 분석**:
+  - **화면 겹침(Overlap) 및 레이아웃 깨짐**: 창 크기 변경 및 고해상도(DPI 125%/150%) 환경에서 경로 확인 바(`lookBar`)의 긴 텍스트와 하단 푸터(`foot`)의 체크박스/상태 라벨이 겹치거나 화면 밖으로 밀려남.
+  - **고정된 화면 분할**: 프로필 목록 영역이 150px(`Absolute`)로 고정되어 프로필/북마크가 많아지면 스크롤이 답답하며, 네트워크 리포트 영역 간 크기 조절이 불가능함.
+  - **렌더링 깜빡임(Flicker)**: 3초 주기의 타이머 폴링마다 리스트뷰 항목 전체를 삭제(`Items.Clear()`) 후 재추가하여 화면 깜빡임이 심하고 선택 포커스가 튐.
+  - **아이콘 품질 한계**: GDI+ 기본 드로잉(32x32 단일 비트맵)으로 생성되어 고해상도 모니터 및 작업 표시줄 알림 영역에서 경계선이 뭉개지고 시인성이 낮음.
+  - **UI 프리징 및 예외 처리 취약성**: 메인 스레드에서의 네트워크 상태 조회 지연, CLI 비동기 프로세스 파일 I/O 잠금 예외, WinForms 모달리스 다이얼로그 처리 미비.
+
+---
+
+### 2. 상세 개선 요구사항 (Functional Requirements)
+
+#### FR-06. 윈도우 폼 레이아웃 및 화면 겹침(Overlap) 완전 해소
+- [ ] **반응형 2분할 스플리터 구조 도입 (`SplitContainer`)**:
+  - 상단(프로필/북마크 목록)과 하단(네트워크 리포트/경로 분석)을 `SplitContainer`로 분리하여 사용자가 자유롭게 경계선 드래그로 비율 조절 가능하도록 개선.
+- [ ] **경로 확인 바(`lookBar`) 겹침 방지 레이아웃 개편**:
+  - `WrapContents = $false`로 인한 가로 밀림 현상 해결: 경로 확인 결과를 고정 라벨 대신 자동 줄바꿈 또는 가변 너비 읽기 전용 텍스트박스로 변경하여 텍스트 길이에 따라 하단 컨트롤과 겹치지 않도록 분리.
+- [ ] **표준 `StatusStrip` 도입으로 푸터 정리**:
+  - 기존 `FlowLayoutPanel` 기반의 `$foot`을 Windows 표준 `StatusStrip` 및 `ToolStripStatusLabel`로 대체.
+  - 좌측: 실시간 작업 상태 및 갱신 시간, 우측: 자동 실행 체크박스 및 DPI 배율 정보로 완벽한 좌우 분리 정렬.
+- [ ] **DPI 스케일링(Per-Monitor DPI) 최적화**:
+  - `AutoScaleMode = Dpi` 환경에서 폰트, 버튼 패딩, 컨트롤 최소/최대 크기(`MinimumSize`, `MaximumSize`)가 96 DPI ~ 192 DPI(100% ~ 200%) 전 구간에서 일그러짐 없이 비례 유지되도록 보정.
+
+#### FR-07. 아이콘 품질 및 비주얼 아이덴티티(Visual Identity) 고도화
+- [ ] **멀티 해상도 공식 `.ico` 에셋 도입**:
+  - 런타임 32x32 GDI+ 원시 드로잉 방식에서 벗어나 16x16, 24x24, 32x32, 48x48, 64x64, 256x256 멀티 사이즈가 포함된 고화질 전문 아이콘 파일 구축.
+  - 100%, 125%, 150%, 200% 디스플레이 스케일별 트레이 영역에서 안티앨리어싱이 완벽 적용된 선명한 아이콘 렌더링.
+- [ ] **상태별 비주얼 시인성 강화**:
+  - **Connected (연결됨)**: 세련된 에메랄드 그린 + 보안 쉴드/자물쇠 모티프.
+  - **Connecting (연결 중)**: 비비드 앰버(Amber) + 애니메이션 느낌의 회전/진행 심볼.
+  - **Disconnected (연결 끊김)**: 모던 뉴트럴 슬레이트 그레이.
+  - **Warning / Error**: 레드 뱃지 인디케이터.
+- [ ] **윈도우 폼 타이틀바 및 작업 표시줄 개별 최적화**:
+  - 폼 타이틀바(`Form.Icon`)와 시스템 트레이(`NotifyIcon.Icon`) 간 해상도 불일치 제거.
+
+#### FR-08. 렌더링 깜빡임(Flicker) 제거 및 런타임 안정성 보강
+- [ ] **이중 버퍼링(DoubleBuffering) 전면 적용**:
+  - `Form`, `ListView`, `TableLayoutPanel`, `SplitContainer`에 리플렉션을 통해 `DoubleBuffered = true` 강제 적용하여 화면 갱신 시의 백색 플래시/깜빡임 완전 제거.
+- [ ] **리스트뷰 스마트 갱신 (Diff-Update / In-place Update)**:
+  - 매 주기마다 `Items.Clear()`를 호출하지 않고, 기존 아이템 목록과 상태(`State`, `Display`, `Host`)를 비교하여 변경된 행의 `SubItems`와 색상/폰트만 즉시 갱신.
+  - 사용자가 선택한 행(`SelectedItems`)의 포커스와 스크롤 위치 영구 유지.
+- [ ] **텍스트 리포트 스크롤 점프 방지**:
+  - 네트워크 분석 리포트 업데이트 시 Win32 API(`EM_GETSCROLLPOS`, `EM_SETSCROLLPOS`)를 활용하여 수직/수평 스크롤 위치를 기억하고 복원.
+- [ ] **비동기 프로세스 파일 잠금 예외 방어**:
+  - CLI 출력 파일(`openconnectsg-tray.out`) 읽기 시 `[System.IO.FileShare]::ReadWrite` 옵션을 적용하여 읽기-쓰기 충돌에 따른 `IOException` 예외 원천 차단.
+
+#### FR-09. Windows 11 모던 UI 스타일 및 사용자 편의성(UX) 향상
+- [ ] **모던 다크/라이트 테마 자동 감지 지원**:
+  - Windows 개인 설정 레지스트리(`HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize\AppsUseLightTheme`)를 감지하여 다크 모드 / 라이트 모드 색상 팔레트 자동 전환.
+- [ ] **상태 컬럼 비주얼 뱃지(Badge) 도입**:
+  - 단순 텍스트("연결됨", "끊김") 대신 `ImageList` 기반의 컬러 인디케이터 닷(Dot) 뱃지 렌더링.
+- [ ] **키보드 단축키 및 접근성 개선**:
+  - `F5` (즉시 강제 새로고침), `Enter` (선택 프로필 즉시 연결), `Delete` (선택 프로필 연결 해제), `Ctrl+N` (새 프로필 마법사), `Ctrl+B` (북마크 관리).
+- [ ] **모달리스 설정/마법사 창 개선**:
+  - 새 프로필 추가 버튼(`$btnAdd`) 클릭 시 검은 콘솔창이 팝업되는 대신, 깔끔한 전용 WinForms 다이얼로그나 임베디드 설정 화면 제공.
+
+---
+
 ### 3. 단계별 개발 계획 (Development Phases)
 
 - [ ] **Phase 1: 데이터 모델 및 기본 스토리지 엔진 구현**
@@ -125,10 +185,16 @@
 - [ ] **Phase 3: 프로토콜별 실행 핸들러 및 VPN 터널 연계 검증**
   - SSH (OpenSSH / wt.exe / cmd), Browser (HTTP/HTTPS), RDP 론처 구현.
   - 터널 수립 완료 대기 폴링 및 타임아웃 제어 로직.
-- [ ] **Phase 4: 트레이 GUI 연동 (`openconnectsg-tray.ps1`)**
+- [ ] **Phase 4: 트레이 GUI 연동 및 북마크 뷰 구현 (`openconnectsg-tray.ps1`)**
   - 시스템 트레이 컨텍스트 메뉴에 Bookmarks 서브메뉴 반영.
-  - 메인 윈도우 북마크 관리 뷰 및 원클릭 버튼 배치.
-- [ ] **Phase 5: 문서화 및 통합 테스트**
+  - 메인 윈도우에 북마크 탭 또는 전용 리스트뷰 추가 및 원클릭 'Quick Connect' 버튼 배치.
+- [ ] **Phase 5: 트레이 GUI 폼 레이아웃 및 렌더링/아이콘 전면 개선 (Modernization)**
+  - `SplitContainer` 도입으로 프로필/리스트 영역과 상세 뷰 간 드래그 리사이즈 구현.
+  - 경로 확인 바(`lookBar`) 텍스트 초과 시 화면 겹침 해결 및 푸터(`StatusStrip`) 전면 개편.
+  - `DoubleBuffered` 리플렉션 및 리스트뷰 Diff-Update(스마트 갱신)로 렌더링 깜빡임 완전 제거.
+  - 고품질 멀티 해상도 공식 `.ico` 파일 적용 및 상태별 시각 디자인(에메랄드/앰버/슬레이트) 정밀화.
+  - 스크롤 위치 보존 및 비동기 파일 I/O 예외 방어 로직 강화.
+- [ ] **Phase 6: 문서화 및 통합 테스트**
   - `docs/subcommand-manual.md`에 `bookmark` 및 `open` 매뉴얼 추가.
-  - `docs/architecture.md`에 북마크 디스패치 파이프라인 다이어그램 추가.
-  - 다양한 네트워크 시나리오(기존 연결 상태, 미연결 상태, 타임아웃 등) 검증.
+  - `docs/architecture.md`에 북마크 디스패치 파이프라인 및 트레이 GUI 레이아웃 아키텍처 다이어그램 추가.
+  - 다양한 화면 해상도(100%~200% DPI), 네트워크 시나리오, 장시간 상주 테스트 검증.
