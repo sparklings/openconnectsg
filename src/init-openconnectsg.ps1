@@ -139,12 +139,12 @@ function Detect-VpnGateway {
 
 
 Write-Host ""
-Write-Host "   ____                   ______                            __   _____       " -ForegroundColor Cyan
-Write-Host "  / __ \____  ___  ____  / ____/___  ____  ____  ___  _____/ /_ / ___/____ _ " -ForegroundColor Cyan
-Write-Host " / / / / __ \/ _ \/ __ \/ /   / __ \/ __ \/ __ \/ _ \/ ___/ __/ \__ \/ __ `/ " -ForegroundColor Cyan
-Write-Host "/ /_/ / /_/ /  __/ / / / /___/ /_/ / / / / / / /  __/ /__/ /_   ___/ / /_/ /  " -ForegroundColor Cyan
-Write-Host "\____/ .___/\___/_/ /_/\____/\____/_/ /_/_/ /_/\___/\___/\__/  /____/\__, /   " -ForegroundColor Cyan
-Write-Host "    /_/                                                             /____/    " -ForegroundColor Cyan
+Write-Host "   ____                   ______                            __  _____      " -ForegroundColor Cyan
+Write-Host "  / __ \____  ___  ____  / ____/___  ____  ____  ___  _____/ /_/ ___/____ _" -ForegroundColor Cyan
+Write-Host " / / / / __ \/ _ \/ __ \/ /   / __ \/ __ \/ __ \/ _ \/ ___/ __/\__ \/ __ `/" -ForegroundColor Cyan
+Write-Host "/ /_/ / /_/ /  __/ / / / /___/ /_/ / / / / / / /  __/ /__/ /_ ___/ / /_/ / " -ForegroundColor Cyan
+Write-Host "\____/ .___/\___/_/ /_/\____/\____/_/ /_/_/ /_/\___/\___/\__//____/\__, /  " -ForegroundColor Cyan
+Write-Host "    /_/                                                           /____/   " -ForegroundColor Cyan
 Write-Host " ==============================================================================" -ForegroundColor DarkGray
 Write-Host "  OpenConnectSg :: Interactive Setup Wizard (v0.1.3b)" -ForegroundColor White
 Write-Host " ==============================================================================" -ForegroundColor DarkGray

@@ -4,8 +4,8 @@ authors:
   - name: "sparklings"
     website: "https://github.com/sparklings"
 title: "openconnectsg: Automated, DPAPI-Secured OpenConnect Windows Service Manager"
-version: 1.0.4a
-date-released: 2026-11-06
+version: 1.0.4b
+date-released: 2026-11-20
 url: "https://github.com/sparklings/openconnectsg"
 repository-code: "https://github.com/sparklings/openconnectsg"
 license: MIT
