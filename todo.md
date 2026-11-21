@@ -175,26 +175,26 @@
 
 ### 3. 단계별 개발 계획 (Development Phases)
 
-- [ ] **Phase 1: 데이터 모델 및 기본 스토리지 엔진 구현**
+- [ ] **Phase 1: 데이터 모델 및 기본 스토리지 엔진 구현** ([Issue #6](https://github.com/sparklings/openconnectsg/issues/6))
   - `OpenConnectSg` 네임스페이스 기반의 `bookmarks.json` I/O 헬퍼 함수 (`Get-Bookmarks`, `Save-Bookmarks`).
   - 사용자별/시스템 공용 경로 해석 및 자동 디렉터리 생성 로직.
   - 북마크 유효성 검사기 및 프로필 매핑 검증 로직.
-- [ ] **Phase 2: CLI 서브커맨드 구현 (`openconnectsg bookmark`, `openconnectsg open`)**
+- [ ] **Phase 2: CLI 서브커맨드 구현 (`openconnectsg bookmark`, `openconnectsg open`)** ([Issue #7](https://github.com/sparklings/openconnectsg/issues/7))
   - `openconnectsg.ps1` 내 `Do-Bookmark` 및 `Do-Open` 디스패처 작성.
   - `list`, `add`, `edit`, `remove`, `open` 서브커맨드 구현.
-- [ ] **Phase 3: 프로토콜별 실행 핸들러 및 VPN 터널 연계 검증**
+- [ ] **Phase 3: 프로토콜별 실행 핸들러 및 VPN 터널 연계 검증** ([Issue #8](https://github.com/sparklings/openconnectsg/issues/8))
   - SSH (OpenSSH / wt.exe / cmd), Browser (HTTP/HTTPS), RDP 론처 구현.
   - 터널 수립 완료 대기 폴링 및 타임아웃 제어 로직.
-- [ ] **Phase 4: 트레이 GUI 연동 및 북마크 뷰 구현 (`openconnectsg-tray.ps1`)**
+- [ ] **Phase 4: 트레이 GUI 연동 및 북마크 뷰 구현 (`openconnectsg-tray.ps1`)** ([Issue #9](https://github.com/sparklings/openconnectsg/issues/9))
   - 시스템 트레이 컨텍스트 메뉴에 Bookmarks 서브메뉴 반영.
   - 메인 윈도우에 북마크 탭 또는 전용 리스트뷰 추가 및 원클릭 'Quick Connect' 버튼 배치.
-- [ ] **Phase 5: 트레이 GUI 폼 레이아웃 및 렌더링/아이콘 전면 개선 (Modernization)**
+- [ ] **Phase 5: 트레이 GUI 폼 레이아웃 및 렌더링/아이콘 전면 개선 (Modernization)** ([Issue #10](https://github.com/sparklings/openconnectsg/issues/10))
   - `SplitContainer` 도입으로 프로필/리스트 영역과 상세 뷰 간 드래그 리사이즈 구현.
   - 경로 확인 바(`lookBar`) 텍스트 초과 시 화면 겹침 해결 및 푸터(`StatusStrip`) 전면 개편.
   - `DoubleBuffered` 리플렉션 및 리스트뷰 Diff-Update(스마트 갱신)로 렌더링 깜빡임 완전 제거.
   - 고품질 멀티 해상도 공식 `.ico` 파일 적용 및 상태별 시각 디자인(에메랄드/앰버/슬레이트) 정밀화.
   - 스크롤 위치 보존 및 비동기 파일 I/O 예외 방어 로직 강화.
-- [ ] **Phase 6: 문서화 및 통합 테스트**
+- [ ] **Phase 6: 문서화 및 통합 테스트** ([Issue #11](https://github.com/sparklings/openconnectsg/issues/11))
   - `docs/subcommand-manual.md`에 `bookmark` 및 `open` 매뉴얼 추가.
   - `docs/architecture.md`에 북마크 디스패치 파이프라인 및 트레이 GUI 레이아웃 아키텍처 다이어그램 추가.
   - 다양한 화면 해상도(100%~200% DPI), 네트워크 시나리오, 장시간 상주 테스트 검증.
