@@ -1,7 +1,7 @@
 ﻿#Requires -RunAsAdministrator
 <#
 .SYNOPSIS
-  openconnectsg profile setup wizard (invoked by 'openconnectsg setup', v0.1.3b)
+  openconnectsg profile setup wizard (invoked by 'openconnectsg setup', v1.0.4c)
 .DESCRIPTION
   Interactive wizard that prompts for remote VPN host, port, credentials,
   verifies binary dependencies with cryptographic checksums, encrypts credentials via DPAPI,
@@ -145,8 +145,18 @@ Write-Host " / / / / __ \/ _ \/ __ \/ /   / __ \/ __ \/ __ \/ _ \/ ___/ __/\__ \
 Write-Host "/ /_/ / /_/ /  __/ / / / /___/ /_/ / / / / / / /  __/ /__/ /_ ___/ / /_/ / " -ForegroundColor Cyan
 Write-Host "\____/ .___/\___/_/ /_/\____/\____/_/ /_/_/ /_/\___/\___/\__//____/\__, /  " -ForegroundColor Cyan
 Write-Host "    /_/                                                           /____/   " -ForegroundColor Cyan
+$version = '1.0.4c'
+if (-not [string]::IsNullOrWhiteSpace($PSScriptRoot)) {
+  $mainPs1 = Join-Path $PSScriptRoot 'openconnectsg.ps1'
+  if (Test-Path $mainPs1) {
+    $vLine = Get-Content $mainPs1 -ErrorAction SilentlyContinue | Where-Object { $_ -match '^\$script:Version\s*=\s*[''"]([^''"]+)[''"]' } | Select-Object -First 1
+    if ($vLine -and $vLine -match '^\$script:Version\s*=\s*[''"]([^''"]+)[''"]') {
+      $version = $matches[1]
+    }
+  }
+}
 Write-Host " ==============================================================================" -ForegroundColor DarkGray
-Write-Host "  OpenConnectSg :: Interactive Setup Wizard (v0.1.3b)" -ForegroundColor White
+Write-Host "  OpenConnectSg :: Interactive Setup Wizard (v$version)" -ForegroundColor White
 Write-Host " ==============================================================================" -ForegroundColor DarkGray
 Write-Host ""
 
@@ -543,7 +553,8 @@ Write-Host "Starting service '$svcName'..."
 & $nssmExe start $svcName *>$null
 $ErrorActionPreference = $prevEAP
 
-$statusRaw = (& $nssmExe status $svcName 2>&1 | Out-String).Trim()
+$statusRaw = ((& $nssmExe status $svcName 2>&1 | Out-String) -replace "`0", "") -replace "[\r\n]+", ""
+$statusRaw = $statusRaw.Trim()
 Write-Host ""
 Write-Host " ==============================================================================" -ForegroundColor DarkGray
 Write-Host "  Profile setup completed successfully! (Service: $statusRaw)" -ForegroundColor Green

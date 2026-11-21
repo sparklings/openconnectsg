@@ -29,3 +29,6 @@ logs/
 *.zip
 *.exe
 !openconnect-installer-*.exe
+
+# OneDrive sync conflict artifacts
+*-G2300227*

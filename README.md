@@ -9,7 +9,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Platform: Windows](https://img.shields.io/badge/Platform-Windows%2010%2F11%2FServer-blue.svg)]()
 [![Shell: PowerShell 5.1+](https://img.shields.io/badge/PowerShell-5.1%2B-blue.svg)]()
-[![Version: v1.0.4b](https://img.shields.io/badge/Version-v1.0.4b-green.svg)](CHANGELOG.md)
+[![Version: v1.0.4c](https://img.shields.io/badge/Version-v1.0.4c-green.svg)](CHANGELOG.md)
 
 ---
 
@@ -37,7 +37,7 @@
 | **DPAPI 심층 기술 가이드** | `.NET ProtectedData`<br>`pw.bin` | [DPAPI 심층 기술 가이드](docs/dpapi-technical-guide.md)<br>DPAPI 키 도출 구조, LocalMachine 스코프, 무인 데몬 주입 설계 |
 | **icacls 접근 제어 가이드** | `icacls.exe`<br>`NTFS DACL` | [icacls 접근 제어 가이드](docs/icacls-technical-guide.md)<br>NTFS 보안 모델, 상속 완전 차단(/inheritance:r), Well-Known SID 하드닝 |
 | **장애 진단 및 트러블슈팅** | `profiles/<service>/logs/*` | [장애 진단 및 문제 해결 가이드](docs/troubleshooting.md)<br>로그 분석법, Wintun 어댑터 0x102 타임아웃 해결, 계정 잠금 대응 |
-| **버전 및 변경 이력** | 전체 프로젝트 리포지토리 | [변경 이력 (CHANGELOG.md)](CHANGELOG.md)<br>버전별(v0.1.0 ~ v1.0.4b) 추가/수정/보안 패치 및 산출물 추적 |
+| **버전 및 변경 이력** | 전체 프로젝트 리포지토리 | [변경 이력 (CHANGELOG.md)](CHANGELOG.md)<br>버전별(v0.1.0 ~ v1.0.4c) 추가/수정/보안 패치 및 산출물 추적 |
 
 ---
 
@@ -95,7 +95,7 @@ openconnectsg disconnect all       # 모든 활성 VPN 연결 해제
 | `openconnectsg remove <p>` | `rm`, `delete` | 프로필 구성 삭제 및 Windows 서비스 영구 등록 해제 |
 | `openconnectsg upgrade [<p>]` | `update` | 최신 소스로 바이너리 업그레이드 및 버전 검증 (`--force` 지원) |
 | `openconnectsg uninstall [<s\>]` | `un`, `purge` | 도구 제거 (범위: `app` 앱 전용 삭제, `full` 전체 완전 삭제) |
-| `openconnectsg version` | `-v` | 현재 버전 및 시스템 정보 출력 (`1.0.4b`) |
+| `openconnectsg version` | `-v` | 현재 버전 및 시스템 정보 출력 (`1.0.4c`) |
 | `openconnectsg banner` | - | 웰컴 Slant ASCII Figlet 배너 출력 |
 | `openconnectsg help` | `-h` | CLI 도움말 및 배너 출력 |
 
@@ -103,7 +103,7 @@ openconnectsg disconnect all       # 모든 활성 VPN 연결 해제
 
 ---
 
-## Latest Release Information (v1.0.4b)
+## Latest Release Information (v1.0.4c)
 
 * **원클릭 웹 자동 설치 호환성 패치 (`irm ... | iex`)**: `$PSScriptRoot`가 비어있는 인메모리 스트림 환경에서 `Split-Path` 매개 변수 바인딩 예외를 해결하고, 소스 디렉터리 폴백 로직을 보강했습니다.
 * **FIGlet ASCII 아트 배너 표준화**: 터미널 출력 배너를 단어 간 공백이 있던 `OpenConnect Sg`에서 결합형인 `OpenConnectSg`로 전면 갱신했습니다.

@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.0.4c] - 2026-11-21
+
+### Fixed
+- **NSSM Status Line Break in Setup Wizard (`src/init-openconnectsg.ps1`)**:
+  - Resolved an abnormal line wrap where the closing parenthesis `)` rendered on a separate line in the profile completion banner (`Profile setup completed successfully! (Service: SERVICE_RUNNING)`).
+  - Sanitized NSSM status string output by stripping null bytes (`\0`) and trailing CRLF line breaks before terminal interpolation.
+- **Dynamic Version Synchronization in Setup Wizard (`src/init-openconnectsg.ps1`)**:
+  - Replaced legacy hardcoded version string (`v0.1.3b`) in the setup wizard header with dynamic version detection from the main CLI dispatcher (`openconnectsg.ps1`), with fallback to the release version (`1.0.4c`).
+- **Metadata & Documentation Version Alignment**:
+  - Synchronized all active version references and badges across `README.md`, `CITATION.cff`, `install/install-openconnectsg.ps1`, `docs/install-guide.md`, `docs/architecture.md`, and `docs/subcommand-manual.md` to release `v1.0.4c`.
+
+---
+
 ## [1.0.4b] - 2026-11-20
 
 ### Fixed
