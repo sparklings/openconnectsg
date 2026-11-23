@@ -238,10 +238,13 @@
     - `openconnectsg logs --gui`: Windows 기본 이벤트 뷰어(`eventvwr.msc`) 즉시 실행.
   - **온디맨드 디버그 모드 (`openconnectsg connect <profile> --debug`)**:
     - 파일 생성 없이 현재 터미널 화면에만 원시 스트림을 실시간 콘솔 출력하는 심층 장애 추적 모드 지원.
+- [ ] **FR-EVTX-05. 독립적 기술보고서 작성 및 문서 허브 연계 (`docs/evtx-technical-guide.md`)**:
+  - `docs/dpapi-technical-guide.md` 수준의 정밀 엔지니어링 기술보고서 구축 (7대 챕터: WES 및 BinXML 구조, <System>/<EventData> 스키마, 인메모리 스트림 드레이너, Custom View XML, 비교 매트릭스, XPath 및 SIEM/ITOM 가이드).
+  - 프로젝트 문서 허브(`README.md`, `docs/openconnectsg.md`)에 공식 등재.
 
 ### 3. 단계별 개발 계획
 - [ ] **Phase 1: Event Log Provider 등록 및 Custom View XML 배포**
 - [ ] **Phase 2: 텍스트 로그 파일 설정 완전 제거 (`logs/` 폴더 및 NSSM 리다이렉션 폐지)**
 - [ ] **Phase 3: 인메모리 스트림 파서 및 `Write-OpenConnectSgEvent` 구현**
 - [ ] **Phase 4: CLI 진단 전환 (`Get-WinEvent`) 및 Tray GUI `eventvwr.msc` 바로가기 연동**
-- [ ] **Phase 5: 문서화 및 검증** (`docs/troubleshooting.md`, `docs/architecture.md`)
+- [ ] **Phase 5: 독립 기술보고서(`docs/evtx-technical-guide.md`) 작성 및 문서 허브 연계**
