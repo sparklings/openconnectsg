@@ -201,41 +201,43 @@
 
 ---
 
-## 📋 [Feature] Windows Event Log (EVTX) Native Integration & Structured Logging Architecture ([Issue #12](https://github.com/sparklings/openconnectsg/issues/12))
+## 📋 [Feature] Native Windows Event Log (EVTX) Recording & Event Viewer Integration ([Issue #12](https://github.com/sparklings/openconnectsg/issues/12))
 
-### 1. 개요 및 기획 배경
-- **현행 문제점**:
-  - `out.log` 및 `err.log`에 타임스탬프와 프로세스 ID(PID)가 없어 정확한 장애 시점 및 프로세스 단위 추적이 불가능함.
-  - 윈도우 OS 표준 이벤트 시스템인 EVTX와 연동되지 않아 이벤트 뷰어(`eventvwr.msc`), `Get-WinEvent`, SIEM(Splunk, Sentinel 등) 연동 불가.
-  - 서비스 재시작 시 파일 초기화로 인한 과거 장애 로그 유실 위험.
-- **개발 목표**:
-  - `04. 윈도우 이벤트 로그 EVTX.md` 기술보고서 표준을 준수하여 `<System>` 메타데이터(TimeCreated, ProcessID, ThreadID, Level)와 `<EventData>` 페이로드를 갖춘 네이티브 EVTX 로깅 구현.
-  - 기존 텍스트 로그 파일(`out.log`, `err.log`)에도 `[yyyy-MM-dd HH:mm:ss.fff] [PID:xxxx]` 실시간 프리픽스 주입.
+### 1. 개요 및 기획 배경 (Design Philosophy: 기본 도구 활용 & 바퀴의 재발명 배제)
+- **설계 철학**:
+  - Windows 기본 진단 도구인 **이벤트 뷰어(`eventvwr.msc`)**의 성숙한 기능을 100% 활용하며, 별도의 자체 뷰어 UI 개발을 배제하여 외부 참조도와 복잡도를 최소화함.
+  - `openconnectsg`는 Windows OS 표준 이벤트 기록 방식(EVTX)에 충실하게 고품질의 구조화된 이벤트를 기록하는 본연의 역할에 집중함.
+  - 이벤트 뷰어 전용 **사용자 지정 보기(Custom View XML)**를 배포하여, 사용자가 이벤트 뷰어를 열었을 때 `OpenConnectSg` 로그를 원클릭으로 격리 조회할 수 있도록 지원하고, Tray GUI 및 CLI는 **기본 프로그램 바로가기(Shortcut)**만을 제공함.
+- **해결 과제**:
+  - `out.log` 및 `err.log`에 타임스탬프와 프로세스 ID(PID)가 누락되어 발생하는 세션/장애 추적 한계 해소.
+  - Windows 표준 관측성(EVTX)을 완벽히 수용하여 기업용 SIEM/ITOM 및 이벤트 뷰어에서 정형화된 XML 데이터로 분석 가능하도록 개선.
 
 ### 2. 상세 요구사항 (FR-EVTX)
-- [ ] **FR-EVTX-01. 이벤트 소스 등록 및 수명주기 관리**:
-  - 설치 스크립트 실행 시 `Application` 채널에 `OpenConnectSg` 이벤트 소스 자동 등록.
-  - 제거(`uninstall`) 시 이벤트 소스 정리(`DeleteEventSource`).
-- [ ] **FR-EVTX-02. 이벤트 ID 체계 정의 (Taxonomy)**:
-  - `1000~1002`: 데몬 서비스 수명주기 (Start, Stop, Abnormal Exit)
-  - `2000~2002`: VPN 터널 수명주기 (Attempt, Established, Disconnected)
-  - `3000~3002`: 경고/네트워크 이벤트 (DTLS 실패/TLS 폴백, Wintun 자가 소독, Keepalive 지연)
-  - `4000~4003`: 에러/인증 실패 (Permission denied, Wintun 0x102 타임아웃, 계정 잠금, DPAPI 복호화 실패)
-  - `5000~5001`: 관리자 CLI 및 마법사 설정 변경, 바이너리 업그레이드
-- [ ] **FR-EVTX-03. 구조화된 이벤트 로거 모듈 (`Write-OpenConnectSgEvent`)**:
-  - `.NET` `[System.Diagnostics.EventLog]` 기반의 헬퍼 함수 구현.
-  - 시스템 메타데이터 및 `<EventData>` Key/Value 페이로드 기록.
-- [ ] **FR-EVTX-04. 텍스트 로그 파일 포맷 정규화**:
+- [ ] **FR-EVTX-01. Windows Event Source 등록 및 Custom View 바로가기 배포**:
+  - 설치 스크립트 실행 시 `Application` 채널에 `OpenConnectSg` 이벤트 소스 공식 등록.
+  - 시스템 경로 `%ProgramData%\Microsoft\Event Viewer\Views\OpenConnectSg.xml`에 전용 사용자 지정 보기 XML 배치 (이벤트 뷰어 좌측 트리에 'OpenConnectSg' 자동 노출).
+  - 제거(`uninstall`) 시 이벤트 소스 및 Custom View XML 자동 삭제.
+- [ ] **FR-EVTX-02. 정형화된 EventID 체계 정의 (Taxonomy & EventData Schema)**:
+  - `1000~1002`: 데몬 서비스 수명주기 (1000: 서비스 시작, 1001: 정상 중지, 1002: 비정상 종료)
+  - `2000~2002`: VPN 터널 수명주기 (2000: 연결 시도, 2001: 가상 IP/라우팅 수립 완료, 2002: 연결 해제)
+  - `3000~3002`: 경고/네트워크 이벤트 (3000: DTLS 실패/TLS 폴백, 3001: Wintun 어댑터 소독, 3002: Keepalive 지연)
+  - `4000~4003`: 에러/인증 실패 (4000: 인증 실패, 4001: Wintun 0x102 타임아웃, 4002: 계정 잠금, 4003: DPAPI 복호화 오류)
+  - `5000~5001`: 관리자 마법사 설정 변경 및 버전 업그레이드
+  - `<System>` 메타데이터(TimeCreated, ProcessID, ThreadID, Level) + `<EventData>` 정형 페이로드 기록.
+- [ ] **FR-EVTX-03. 텍스트 로그 파일 포맷 정규화 (타임스탬프 & PID 주입)**:
   - `Do-ServiceRun` 데몬 스트림 핸들러에 타임스탬프(`yyyy-MM-dd HH:mm:ss.fff`) 및 `[PID:xxxx]` 실시간 프리픽스 결합.
   - 주요 연결/장애 시점에 EVTX 이중 기록(Dual-Write) 파이프라인 수립.
-- [ ] **FR-EVTX-05. CLI 진단 커맨드 및 트레이 GUI 연동 고도화** ([Issue #13](https://github.com/sparklings/openconnectsg/issues/13)):
-  - `openconnectsg logs` (`Get-WinEvent` 기반 컬러 TUI 표 뷰어) 구현.
-  - 트레이 GUI 우클릭 메뉴에 "View Event Log" 항목 추가 및 전용 `EventLogViewerForm` 다이얼로그(심각도별 컬러 태깅, 프로필/레벨 필터링, 상하 2분할 상세 뷰) 연동.
-  - 기존 메모장(`notepad.exe`) 호출 방식을 Windows 표준 진단 인터페이스로 개선.
+- [ ] **FR-EVTX-04. 기본 도구(Event Viewer) 원클릭 바로가기 연동**:
+  - **Tray GUI (`openconnectsg-tray.ps1`)**:
+    - 메인 창 `$btnLog` ('로그 보기') 클릭 시 Windows 기본 이벤트 뷰어(`eventvwr.msc`)를 즉시 기동 (사용자 지정 보기로 자동 연결).
+    - 트레이 우클릭 컨텍스트 메뉴에 **"이벤트 뷰어 열기 (Event Viewer)"** 바로가기 메뉴 추가.
+  - **CLI 서브커맨드 (`openconnectsg logs` / `openconnectsg log`)**:
+    - `openconnectsg logs`: 터미널에서 `Get-WinEvent` 기반 최근 15건 요약 이벤트 TUI 출력.
+    - `openconnectsg logs --gui`: Windows 기본 이벤트 뷰어(`eventvwr.msc`) 즉시 실행.
 
 ### 3. 단계별 개발 계획
-- [ ] **Phase 1: Event Log Provider 등록 및 인프라 구축**
+- [ ] **Phase 1: Event Log Provider 등록 및 Custom View XML 배포**
 - [ ] **Phase 2: `Write-OpenConnectSgEvent` 코어 모듈 작성**
-- [ ] **Phase 3: 데몬 스트림 인터셉터 및 텍스트 로그 포맷 표준화**
-- [ ] **Phase 4: CLI 진단 커맨드 (`openconnectsg logs`) 및 트레이 GUI 연동 ([Issue #13](https://github.com/sparklings/openconnectsg/issues/13))**
+- [ ] **Phase 3: 데몬 스트림 인터셉터 및 텍스트 로그 포맷 표준화 (타임스탬프 & PID)**
+- [ ] **Phase 4: Tray GUI 및 CLI 기본 프로그램 바로가기 연동 (`eventvwr.msc` 연계)**
 - [ ] **Phase 5: 문서화 및 검증** (`docs/troubleshooting.md`, `docs/architecture.md`)
