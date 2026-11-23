@@ -198,3 +198,43 @@
   - `docs/subcommand-manual.md`에 `bookmark` 및 `open` 매뉴얼 추가.
   - `docs/architecture.md`에 북마크 디스패치 파이프라인 및 트레이 GUI 레이아웃 아키텍처 다이어그램 추가.
   - 다양한 화면 해상도(100%~200% DPI), 네트워크 시나리오, 장시간 상주 테스트 검증.
+
+---
+
+## 📋 [Feature] Windows Event Log (EVTX) Native Integration & Structured Logging Architecture ([Issue #12](https://github.com/sparklings/openconnectsg/issues/12))
+
+### 1. 개요 및 기획 배경
+- **현행 문제점**:
+  - `out.log` 및 `err.log`에 타임스탬프와 프로세스 ID(PID)가 없어 정확한 장애 시점 및 프로세스 단위 추적이 불가능함.
+  - 윈도우 OS 표준 이벤트 시스템인 EVTX와 연동되지 않아 이벤트 뷰어(`eventvwr.msc`), `Get-WinEvent`, SIEM(Splunk, Sentinel 등) 연동 불가.
+  - 서비스 재시작 시 파일 초기화로 인한 과거 장애 로그 유실 위험.
+- **개발 목표**:
+  - `04. 윈도우 이벤트 로그 EVTX.md` 기술보고서 표준을 준수하여 `<System>` 메타데이터(TimeCreated, ProcessID, ThreadID, Level)와 `<EventData>` 페이로드를 갖춘 네이티브 EVTX 로깅 구현.
+  - 기존 텍스트 로그 파일(`out.log`, `err.log`)에도 `[yyyy-MM-dd HH:mm:ss.fff] [PID:xxxx]` 실시간 프리픽스 주입.
+
+### 2. 상세 요구사항 (FR-EVTX)
+- [ ] **FR-EVTX-01. 이벤트 소스 등록 및 수명주기 관리**:
+  - 설치 스크립트 실행 시 `Application` 채널에 `OpenConnectSg` 이벤트 소스 자동 등록.
+  - 제거(`uninstall`) 시 이벤트 소스 정리(`DeleteEventSource`).
+- [ ] **FR-EVTX-02. 이벤트 ID 체계 정의 (Taxonomy)**:
+  - `1000~1002`: 데몬 서비스 수명주기 (Start, Stop, Abnormal Exit)
+  - `2000~2002`: VPN 터널 수명주기 (Attempt, Established, Disconnected)
+  - `3000~3002`: 경고/네트워크 이벤트 (DTLS 실패/TLS 폴백, Wintun 자가 소독, Keepalive 지연)
+  - `4000~4003`: 에러/인증 실패 (Permission denied, Wintun 0x102 타임아웃, 계정 잠금, DPAPI 복호화 실패)
+  - `5000~5001`: 관리자 CLI 및 마법사 설정 변경, 바이너리 업그레이드
+- [ ] **FR-EVTX-03. 구조화된 이벤트 로거 모듈 (`Write-OpenConnectSgEvent`)**:
+  - `.NET` `[System.Diagnostics.EventLog]` 기반의 헬퍼 함수 구현.
+  - 시스템 메타데이터 및 `<EventData>` Key/Value 페이로드 기록.
+- [ ] **FR-EVTX-04. 텍스트 로그 파일 포맷 정규화**:
+  - `Do-ServiceRun` 데몬 스트림 핸들러에 타임스탬프(`yyyy-MM-dd HH:mm:ss.fff`) 및 `[PID:xxxx]` 실시간 프리픽스 결합.
+  - 주요 연결/장애 시점에 EVTX 이중 기록(Dual-Write) 파이프라인 수립.
+- [ ] **FR-EVTX-05. CLI 진단 커맨드 및 트레이 GUI 연동**:
+  - `openconnectsg logs` (`Get-WinEvent` 기반 컬러 TUI 표 뷰어) 구현.
+  - 트레이 GUI 우클릭 메뉴에 "View Event Log" 항목 추가.
+
+### 3. 단계별 개발 계획
+- [ ] **Phase 1: Event Log Provider 등록 및 인프라 구축**
+- [ ] **Phase 2: `Write-OpenConnectSgEvent` 코어 모듈 작성**
+- [ ] **Phase 3: 데몬 스트림 인터셉터 및 텍스트 로그 포맷 표준화**
+- [ ] **Phase 4: CLI 진단 커맨드 (`openconnectsg logs`) 및 트레이 GUI 연동**
+- [ ] **Phase 5: 문서화 및 검증** (`docs/troubleshooting.md`, `docs/architecture.md`)
