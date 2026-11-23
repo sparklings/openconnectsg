@@ -228,13 +228,14 @@
 - [ ] **FR-EVTX-04. 텍스트 로그 파일 포맷 정규화**:
   - `Do-ServiceRun` 데몬 스트림 핸들러에 타임스탬프(`yyyy-MM-dd HH:mm:ss.fff`) 및 `[PID:xxxx]` 실시간 프리픽스 결합.
   - 주요 연결/장애 시점에 EVTX 이중 기록(Dual-Write) 파이프라인 수립.
-- [ ] **FR-EVTX-05. CLI 진단 커맨드 및 트레이 GUI 연동**:
+- [ ] **FR-EVTX-05. CLI 진단 커맨드 및 트레이 GUI 연동 고도화** ([Issue #13](https://github.com/sparklings/openconnectsg/issues/13)):
   - `openconnectsg logs` (`Get-WinEvent` 기반 컬러 TUI 표 뷰어) 구현.
-  - 트레이 GUI 우클릭 메뉴에 "View Event Log" 항목 추가.
+  - 트레이 GUI 우클릭 메뉴에 "View Event Log" 항목 추가 및 전용 `EventLogViewerForm` 다이얼로그(심각도별 컬러 태깅, 프로필/레벨 필터링, 상하 2분할 상세 뷰) 연동.
+  - 기존 메모장(`notepad.exe`) 호출 방식을 Windows 표준 진단 인터페이스로 개선.
 
 ### 3. 단계별 개발 계획
 - [ ] **Phase 1: Event Log Provider 등록 및 인프라 구축**
 - [ ] **Phase 2: `Write-OpenConnectSgEvent` 코어 모듈 작성**
 - [ ] **Phase 3: 데몬 스트림 인터셉터 및 텍스트 로그 포맷 표준화**
-- [ ] **Phase 4: CLI 진단 커맨드 (`openconnectsg logs`) 및 트레이 GUI 연동**
+- [ ] **Phase 4: CLI 진단 커맨드 (`openconnectsg logs`) 및 트레이 GUI 연동 ([Issue #13](https://github.com/sparklings/openconnectsg/issues/13))**
 - [ ] **Phase 5: 문서화 및 검증** (`docs/troubleshooting.md`, `docs/architecture.md`)
