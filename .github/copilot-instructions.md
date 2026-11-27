@@ -36,3 +36,10 @@ Follow these strict architectural, cryptographic, and stylistic constraints:
 ## 6. Single-Tunnel & Mutex Enforcement
 - Every service run MUST acquire a named global mutex: `New-Object System.Threading.Mutex($false, "Global\$serviceName")`.
 - When `openconnectsg connect` is invoked, any conflicting running `openconnect_*` services MUST be stopped first to guarantee a clean routing table.
+
+## 7. Logging Policy (Windows Event Log Only, v1.0.5+)
+- Do NOT create text log files (`out.log`, `err.log`, `*.log`) or a `profiles\<service>\logs\` directory, and do NOT configure NSSM `AppStdout`/`AppStderr`/`AppRotate*`.
+- Emit diagnostics to the Windows `Application` log, source `OpenConnectSg`, via `Write-OcsEvent` (PowerShell) or `EventLog.WriteEntry` (C# `StreamDrainer`). The first line of every event body MUST be `Profile: <service>`.
+- Use the EventID taxonomy: 1000-1002 service, 2000-2002 tunnel, 3000-3002 warning, 4000-4003 error, 5000-5001 admin. Do not invent new IDs without updating `docs/evtx-technical-guide.md`.
+- `openconnect.exe` stdout/stderr MUST be drained continuously in memory (pipe-buffer deadlock prevention); never leave a redirected stream unread.
+- Read diagnostics with `Get-WinEvent` (`Get-OcsEvents`), never from files. Logging calls must never throw or block the VPN service (wrap in `try/catch`).

@@ -77,6 +77,7 @@ openconnectsg connect 1            # 1번 프로필로 연결 (기존 활성 터
 openconnectsg alias 1 office       # 1번 프로필에 'office' 별칭 부여
 openconnectsg connect office       # 별칭으로 간편 연결
 openconnectsg disconnect all       # 모든 활성 VPN 연결 해제
+openconnectsg logs --level error   # Windows 이벤트 로그에서 오류 조회 (텍스트 로그 없음)
 ```
 
 ---
@@ -112,6 +113,7 @@ openconnectsg disconnect all       # 모든 활성 VPN 연결 해제
 * **`openconnectsg logs`**: 컬러 TUI로 최근 이벤트 조회 (`--tail`, `--level`, `--raw`, `--gui`). `openconnectsg connect <profile> --debug` 는 파일 생성 없이 원시 스트림을 콘솔에 출력합니다.
 * **이벤트 뷰어 바로가기**: 설치/설정/업그레이드 시 `OpenConnectSg` 사용자 지정 보기(Custom View)를 배포하고, 트레이 GUI의 **이벤트 뷰어** 버튼과 트레이 우클릭 메뉴에서 즉시 엽니다.
 * **자동 마이그레이션**: 기존 설치의 NSSM 로그 리다이렉션과 `logs` 폴더는 다음 연결/서비스 시작/업그레이드 시 자동 제거됩니다.
+* **알려진 제한**: v1.0.4c 이하에서의 *최초* 업그레이드는 구버전 코드가 수행하므로 정리가 각 프로필의 다음 서비스 시작/`connect`로 지연됩니다(Windows 재시작만으로는 수동 시작 프로필이 정리되지 않음). 즉시 정리하려면 `openconnectsg upgrade --force` 를 한 번 더 실행하십시오. ([트러블슈팅 ⑦](docs/troubleshooting.md))
 
 전체 버전별 세부 변경 사항은 [CHANGELOG.md](CHANGELOG.md)에서 확인하실 수 있습니다.
 

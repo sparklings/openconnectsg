@@ -117,6 +117,19 @@ flowchart TD
 
 ---
 
+### ⑦ Legacy `logs\` Folder or NSSM Log Settings Remain After Upgrading from v1.0.4c or Earlier
+* **현상**: v1.0.5로 업그레이드한 뒤에도 `profiles\<서비스명>\logs\` 폴더가 남아 있거나, 중지 상태 프로필의 NSSM `AppStdout`/`AppStderr` 값이 남아 있음.
+* **원인**: 최초 업그레이드는 구버전(v1.0.4c 이하) 코드가 수행하므로 로그 마이그레이션 단계가 없습니다. 정리는 각 프로필의 **다음 서비스 시작 또는 `connect`** 시점에 수행되며, Windows 재시작만으로는 자동 정리되지 않습니다(부팅 시 자동 시작되는 프로필만 정리됨).
+* **해결책**:
+  1. v1.0.5가 설치된 상태에서 업그레이드를 한 번 더 실행합니다:
+     ```powershell
+     openconnectsg upgrade --force
+     ```
+  2. 또는 남아 있는 프로필을 한 번 연결합니다(`openconnectsg connect <profile>`). 연결 시 해당 프로필의 레거시 설정과 `logs\` 폴더가 정리됩니다.
+* 정리 후에는 `profiles\` 하위에 `*.log` 파일이 생성되지 않습니다.
+
+---
+
 ## 3. Full Reset & Clean Reinstallation (Purge)
 
 복구가 불가능할 정도로 설정이 꼬인 경우 내장 언인스톨러를 통해 시스템을 정리할 수 있습니다.

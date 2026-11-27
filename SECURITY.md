@@ -4,6 +4,7 @@
 
 | Version | Supported | Security Updates |
 |---|---|---|
+| 1.0.x (latest: 1.0.5) | :white_check_mark: | Active support |
 | 0.1.x | :white_check_mark: | Active support |
 | < 0.1 | :x: | End of life (deprecated) |
 

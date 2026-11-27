@@ -16,6 +16,7 @@
 4. **Single-Tunnel Enforcement**: Automatically disconnects other active tunnels when initiating a new connection to avoid routing conflicts.
 5. **Unified Daemon Runner**: Executes directly via `openconnectsg.ps1 service-run <service_name>` under NSSM, eliminating temporary dynamic wrapper scripts.
 6. **Multi-Vendor Auto-Detection**: Automatically classifies Cisco AnyConnect and Fortinet SSL-VPN gateways through network, TLS cert, and HTTP signatures, with dynamic Cisco tunnel group (`authgroup`) discovery.
+7. **Windows Event Log Logging (v1.0.5+)**: No text log files; an in-memory stream drainer writes 15 structured EventIDs (1000-5001) to the `Application` log (source `OpenConnectSg`), viewable via `openconnectsg logs` or the Event Viewer Custom View.
 
 ## File Hierarchy
 - `src/openconnectsg.ps1`: Primary CLI dispatcher and NSSM service daemon runner.
@@ -33,7 +34,7 @@
 ## CLI Command Quick Reference
 - `openconnectsg` / `openconnectsg list` / `openconnectsg ls`: List registered VPN profiles with connection status.
 - `openconnectsg setup` / `openconnectsg add`: Interactive wizard to register a new VPN profile and start its service.
-- `openconnectsg connect <profile>` / `openconnectsg up <profile>`: Connect to profile (stops competing tunnels).
+- `openconnectsg connect <profile> [--debug]` / `openconnectsg up <profile>`: Connect to profile (stops competing tunnels); `--debug` streams raw openconnect output to the console without writing files.
 - `openconnectsg disconnect [<profile|all>]` / `openconnectsg down`: Disconnect specific or all active tunnels.
 - `openconnectsg tray` / `openconnectsg gui`: Open WinForms notification-area tray GUI with real-time route inspector.
 - `openconnectsg alias <profile> <alias_name>`: Assign friendly shortcut alias to a profile.
@@ -41,6 +42,7 @@
 - `openconnectsg remove <profile>` / `openconnectsg rm <profile>`: Stop service, unregister NSSM daemon, and delete profile directory.
 - `openconnectsg uninstall [<scope>]` / `openconnectsg purge`: Interactive uninstaller for app-only or full purge removal.
 - `openconnectsg status [<profile>]`: Query real-time service status.
+- `openconnectsg logs [<profile>]` / `openconnectsg log`: Show OpenConnectSg Windows Event Log entries (`--tail`, `--level error|warn`, `--raw`, `--gui`).
 - `openconnectsg version` / `openconnectsg -v`: Display current version.
 - `openconnectsg help` / `openconnectsg -h`: Display CLI help.
 

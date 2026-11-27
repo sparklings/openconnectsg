@@ -4,6 +4,25 @@
 
 ---
 
+## 📊 진행 현황 및 작업 순서 (2026-11-27 기준)
+
+**확정 작업 순서**: #12 → #10 → #6~#8 → #9 → #11 (하나씩 진행, 단계 완료 시 문서·CHANGELOG·todo 갱신 → commit → push → 이슈 업데이트 → 완료 보고)
+
+| 순서 | 이슈 | 작업 | 상태 | 비고 |
+|---|---|---|---|---|
+| 1 | [#12](https://github.com/sparklings/openconnectsg/issues/12) | 순수 Windows Event Log (EVTX) 아키텍처 | ✅ **완료 (v1.0.5)** | 커밋 `7752415`, 릴리스 `v1.0.5`, 이슈 종료. 로컬 `upgrade` 테스트 통과 |
+| 2 | [#10](https://github.com/sparklings/openconnectsg/issues/10) | 트레이 GUI UI/UX 현대화 (FR-06~09) | ⏳ 다음 작업 (계획 보고 완료, **착수 승인 대기**) | 목표 버전 v1.0.6 |
+| 3 | [#6](https://github.com/sparklings/openconnectsg/issues/6) · [#7](https://github.com/sparklings/openconnectsg/issues/7) · [#8](https://github.com/sparklings/openconnectsg/issues/8) | 북마크 데이터 계층 / CLI / Auto-VPN 디스패처 | 대기 | |
+| 4 | [#9](https://github.com/sparklings/openconnectsg/issues/9) | 트레이 북마크 연동 | 대기 | Ctrl+B(북마크 관리) 단축키는 이 단계에서 구현 |
+| 5 | [#11](https://github.com/sparklings/openconnectsg/issues/11) | 문서화 및 통합 테스트 | 대기 | |
+
+**참고 사항**
+- 이슈 #13(자체 이벤트 로그 뷰어 `DataGridView` 안)은 #12의 `eventvwr.msc` 위임 방침으로 **대체되어 무시**한다(이미 closed).
+- **v1.0.5 알려진 제한**: v1.0.4c 이하에서의 최초 업그레이드는 구버전 코드가 수행하므로 레거시 텍스트 로그 정리가 각 프로필의 다음 서비스 시작/`connect`로 지연된다(`upgrade --force` 재실행으로 즉시 정리). 상세는 CHANGELOG `[1.0.5] Known Issues`, `docs/troubleshooting.md` ⑦ 참조.
+- 위 제한의 근본 해결안(업그레이드 후 전체 프로필 재정리, 트레이 시작 시 정리, 패치 릴리스)은 **제안 단계이며 미승인**이다. 승인 시 별도 작업으로 등록한다.
+
+---
+
 ## 📌 [Feature] Host Bookmark & Auto-VPN Dispatcher (호스트 북마크 및 자동 VPN 실행기)
 
 ### 1. 개요 및 기획 배경

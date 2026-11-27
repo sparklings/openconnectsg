@@ -24,6 +24,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Event Source & Custom View deployment**: the installer, setup wizard, and upgrade register the `OpenConnectSg` event source and `%ProgramData%\Microsoft\Event Viewer\Views\OpenConnectSg.xml` (Event Viewer > Custom Views > OpenConnectSg); `uninstall` removes both.
 - **`docs/evtx-technical-guide.md`**: engineering report on the EVTX architecture, EventID taxonomy, in-memory drainer, Custom View, and XPath/WEF/SIEM operations.
 
+### Known Issues
+- **First upgrade from v1.0.4c or earlier defers legacy log cleanup.** The first `openconnectsg upgrade` is performed by the *old* in-memory code, which has no log-migration step, so legacy text-log cleanup is deferred to each profile's next service start or `connect`:
+  - A profile that was running keeps its `logs\` folder until its service is restarted (NSSM opened the files before the migration removed the registry values).
+  - A stopped/manual-start profile keeps its `AppStdout`/`AppStderr` values and `logs\` folder until it is connected; restarting Windows alone does not clean it (only auto-start profiles are cleaned at boot).
+  - `EventID 5001` is not recorded for that first upgrade (it is recorded from later upgrades on).
+  - **Workaround**: run `openconnectsg upgrade --force` once more after v1.0.5 is installed, or `connect` each remaining profile.
+
 ### Documentation
 - Updated `README.md`, `docs/architecture.md`, `docs/subcommand-manual.md`, `docs/troubleshooting.md`, `docs/install-guide.md`, `docs/openconnectsg.md`, `llms.txt`, `llms-full.txt`, `CITATION.cff`, and the bug-report template for v1.0.5 and the Event Log workflow.
 

@@ -413,6 +413,8 @@ Windows 시스템 트레이(알림 영역)에 상주하는 WinForms GUI 도구�
 
 ### 3.10. `upgrade` / `update` (System Upgrade)
 
+> **v1.0.5 참고**: v1.0.4c 이하에서 v1.0.5로의 *최초* 업그레이드는 구버전 코드가 수행하므로, 기존 텍스트 로그(`logs\`, NSSM `AppStdout`/`AppStderr`) 정리가 각 프로필의 다음 서비스 시작/`connect` 시점으로 지연됩니다. 즉시 정리하려면 `openconnectsg upgrade --force` 를 한 번 더 실행하십시오. 자세한 내용은 [트러블슈팅 ⑦](troubleshooting.md)을 참조하십시오.
+
 설치된 `openconnectsg` 바이너리를 최신 버전으로 갱신하고, 변경 사항이 있을 경우 실행 중인 터널 서비스를 동기화합니다. 이미 최신 버전인 경우 터널 중단 없이 업그레이드를 건너뜁니다.
 
 - **문법**:
@@ -440,7 +442,7 @@ Windows 시스템 트레이(알림 영역)에 상주하는 WinForms GUI 도구�
   \____/ .___/\___/_/ /_/\____/\____/_/ /_/_/ /_/\___/\___/\__//____/\__, /  
       /_/                                                           /____/   
    ==============================================================================
-    OpenConnectSg :: System Upgrade & Maintenance (v1.0.4)
+    OpenConnectSg :: System Upgrade & Maintenance (v1.0.5)
    ==============================================================================
 
    [Step 1/3] Fetching latest release package...
@@ -453,11 +455,11 @@ Windows 시스템 트레이(알림 영역)에 상주하는 WinForms GUI 도구�
    [Step 2/3] Deploying updated binaries...
 
      Target Directory  : C:\Program Files\OpenConnect\bin
-     Target Version    : openconnectsg 1.0.4 (Current: 1.0.3c)
+     Target Version    : openconnectsg 1.0.5 (Current: 1.0.4c)
      Status            : Already up to date. No upgrade required.
 
    ==============================================================================
-    Already up to date! (openconnectsg 1.0.4)
+    Already up to date! (openconnectsg 1.0.5)
     No changes were made to binaries or active background services.
    ==============================================================================
   ```
