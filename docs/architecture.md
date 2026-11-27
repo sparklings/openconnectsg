@@ -99,7 +99,7 @@ nssm install $serviceName "powershell.exe" `
 ```
 C:\Program Files\OpenConnect\
 ├── bin\                                  # 바이너리 및 실행 스크립트
-│   ├── openconnectsg.ps1                # 메인 CLI 디스패처 및 데몬 러너 (v1.0.4c)
+│   ├── openconnectsg.ps1                # 메인 CLI 디스패처 및 데몬 러너 (v1.0.5)
 │   ├── openconnectsg-tray.ps1           # WinForms 시스템 트레이 GUI 및 라우트 뷰어
 │   ├── openconnectsg.cmd                # PATH 연동용 셔틀
 │   ├── init-openconnectsg.ps1           # 프로필 생성 및 검증 마법사
@@ -111,11 +111,42 @@ C:\Program Files\OpenConnect\
 │       ├── pin.txt                      # RFC 7469 서버 인증서 SHA-256 핀
 │       ├── label.txt                    # 프로필 단축 별칭(alias)
 │       ├── pw.bin                       # DPAPI 암호화된 비밀번호 바이너리
-│       └── logs\                        # 입출력 런타임 로그
-│           ├── out.log
-│           └── err.log
+│       └── heartbeat.status             # Keepalive 상태 스냅샷 (텍스트 로그는 생성하지 않음)
 ├── openconnect.exe                       # 공식 OpenConnect 바이너리 (v9.21)
 ├── wintun.dll                            # Wintun 가상 TUN 드라이버
 ├── vpnc-script-win.js                    # Windows 라우팅 구성 스크립트
 └── ... (의존성 DLLs)
 ```
+
+---
+
+## 5. Logging Architecture (Windows Event Log)
+
+v1.0.5부터 텍스트 로그 파일(`out.log`, `err.log`)은 생성되지 않으며, **Windows Event Log(`Application` 채널, 소스 `OpenConnectSg`)** 가 유일한 로그 원천입니다. 상세 설계는 [EVTX 기술 가이드](evtx-technical-guide.md)를 참조하십시오.
+
+```mermaid
+flowchart LR
+    OC["openconnect.exe<br/>stdout / stderr"] -->|"리다이렉트 (파이프)"| Drainer["C# StreamDrainer<br/>인메모리 즉시 소비 (Drain)"]
+    Drainer -->|"Heartbeat 집계"| HB["heartbeat.status"]
+    Drainer -->|"패턴 분류 + 30초 스로틀"| EVT[("Windows Event Log<br/>Application / OpenConnectSg")]
+    Runner["Do-ServiceRun / CLI / Setup"] -->|"Write-OcsEvent<br/>1000-1002, 2002, 3001, 4003, 5000-5001"| EVT
+    EVT --> CLI["openconnectsg logs / status / connect"]
+    EVT --> Viewer["eventvwr.msc<br/>사용자 지정 보기 ▸ OpenConnectSg"]
+    EVT --> Tray["Tray GUI 이벤트 뷰어 버튼/메뉴"]
+```
+
+### EventID Taxonomy
+
+| 범위 | EventID | 수준 | 의미 |
+|---|---|---|---|
+| 서비스 | 1000 / 1001 / 1002 | Info / Info / Error | 시작 / 정상 중지 / 비정상 종료 |
+| 터널 | 2000 / 2001 / 2002 | Info | 연결 시도 / 터널 수립 / 해제 |
+| 경고 | 3000 / 3001 / 3002 | Warning | DTLS→TLS 폴백 / 잔류 Wintun 소독 / Keepalive 지연 |
+| 오류 | 4000 / 4001 / 4002 / 4003 | Error | 인증 거부 / Wintun 타임아웃 / 계정 잠금 / DPAPI 복호화 실패 |
+| 관리 | 5000 / 5001 | Info | 프로필 생성·변경 / 업그레이드 완료 |
+
+### Message Envelope
+모든 이벤트 본문은 첫 줄이 `Profile: <서비스명>` 이며, 이어서 `Server:`, 요약 문장, `Detail:` (원시 라인) 순서로 기록됩니다. CLI는 이 `Profile:` 줄로 프로필별 필터링을 수행합니다.
+
+### Legacy Migration
+기존 설치의 NSSM `AppStdout` / `AppStderr` / `AppRotateFiles` / `AppRotateBytes` 레지스트리 값과 `logs` 디렉터리는 `connect`, `service-run`, `upgrade` 시 `Invoke-LogMigration` 이 자동 제거합니다.

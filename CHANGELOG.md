@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.0.5] - 2026-11-27
+
+### Changed (Breaking: logging architecture)
+- **Pure Windows Event Log (EVTX) logging ([#12](https://github.com/sparklings/openconnectsg/issues/12))**:
+  - Text log files (`profiles\<service>\logs\out.log`, `err.log`) are no longer created. The Windows Event Log (`Application` channel, source `OpenConnectSg`) is now the single source of truth.
+  - NSSM `AppStdout` / `AppStderr` / `AppRotate*` redirection is removed from the setup wizard; existing installations are migrated automatically (registry values removed, legacy `logs\` folder deleted) on the next `connect`, service start, or `upgrade`.
+  - `Do-ServiceRun` now drains `openconnect.exe` stdout/stderr entirely in memory through a C# `StreamDrainer` (no pipe-buffer deadlock, no disk I/O) and translates meaningful lines into structured events.
+  - `status` and `connect` failure diagnostics read the Event Log (`Get-WinEvent`) instead of `err.log`; no file permissions are needed for non-admin reads.
+  - Tray GUI: the **Log** button was renamed **Event Viewer** and opens `eventvwr.msc` at the OpenConnectSg Custom View; a tray context-menu entry **Event Viewer** was added. Notepad is no longer used.
+
+### Added
+- **EventID taxonomy (15 IDs)**: `1000` service start, `1001` service stop, `1002` abnormal exit, `2000` connecting, `2001` tunnel established, `2002` tunnel disconnected, `3000` DTLS fallback, `3001` stale Wintun adapter cleanup, `3002` keepalive delay, `4000` authentication rejected, `4001` Wintun adapter timeout, `4002` account lockout, `4003` DPAPI decryption failure, `5000` profile created/changed, `5001` upgrade completed.
+- **`openconnectsg logs` (alias `log`)**: colorized 80-column TUI over `Get-WinEvent` with `<profile>`, `--tail <n>`, `--level error|warn`, `--raw`, and `--gui` (launches Event Viewer).
+- **`openconnectsg connect <profile> --debug`**: on-demand mode that runs `openconnect.exe` in the current console and streams the raw output without writing any file.
+- **Event Source & Custom View deployment**: the installer, setup wizard, and upgrade register the `OpenConnectSg` event source and `%ProgramData%\Microsoft\Event Viewer\Views\OpenConnectSg.xml` (Event Viewer > Custom Views > OpenConnectSg); `uninstall` removes both.
+- **`docs/evtx-technical-guide.md`**: engineering report on the EVTX architecture, EventID taxonomy, in-memory drainer, Custom View, and XPath/WEF/SIEM operations.
+
+### Documentation
+- Updated `README.md`, `docs/architecture.md`, `docs/subcommand-manual.md`, `docs/troubleshooting.md`, `docs/install-guide.md`, `docs/openconnectsg.md`, `llms.txt`, `llms-full.txt`, `CITATION.cff`, and the bug-report template for v1.0.5 and the Event Log workflow.
+
+---
+
 ## [1.0.4c] - 2026-11-21
 
 ### Fixed

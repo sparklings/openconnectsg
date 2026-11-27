@@ -203,6 +203,8 @@
 
 ## 📋 [Feature] Pure Windows Event Log (EVTX) Architecture: Complete Deprecation of Text Logs ([Issue #12](https://github.com/sparklings/openconnectsg/issues/12))
 
+> **✅ 상태: v1.0.5 구현 완료 (2026-11-27)** — FR-EVTX-01~05 및 Phase 1~5 전체 완료. 릴리스 `v1.0.5`, Issue #12 종료.
+
 ### 1. 개요 및 설계 철학 (Architectural Decision: 텍스트 로그 완전 폐지 및 100% EVTX 단일화)
 - **핵심 아키텍처 결정**:
   - **텍스트 파일 로그(`out.log`, `err.log`) 생성을 100% 전면 배제**하고, 오직 **Windows Event Log (EVTX)**만을 유일한 신뢰 원천(Single Source of Truth)으로 사용하는 순수 윈도우 네이티브 로깅 시스템 구축.
@@ -213,11 +215,11 @@
   - 스트림 중 의미 있는 15개 핵심 상태 변화(EventID 1000~5001)만 골라 정형화된 XML 이벤트로 `Application` 이벤트 로그에 안전하게 기록.
 
 ### 2. 상세 요구사항 (FR-EVTX)
-- [ ] **FR-EVTX-01. 텍스트 로그 파일 및 디렉터리 완전 제거 (Deprecate File Logs)**:
+- [x] **FR-EVTX-01. 텍스트 로그 파일 및 디렉터리 완전 제거 (Deprecate File Logs)**:
   - `init-openconnectsg.ps1`의 NSSM 서비스 등록 시 `AppStdout` 및 `AppStderr` 파라미터 파일 매핑 완전 제거.
   - `profiles/<service>/logs/` 디렉터리 생성 로직 제거.
   - `Do-Status`, `Do-Connect` 장애 분석 데이터 소스를 파일에서 `Get-WinEvent -ProviderName OpenConnectSg -MaxEvents 3`으로 전면 전환.
-- [ ] **FR-EVTX-02. 인메모리 스트림 처리 및 이벤트 추출 엔진 (In-Memory Event Extractor)**:
+- [x] **FR-EVTX-02. 인메모리 스트림 처리 및 이벤트 추출 엔진 (In-Memory Event Extractor)**:
   - `Do-ServiceRun`에서 stdout/stderr 스트림을 메모리 상에서 실시간 드레인하며 EventID 매핑:
     - `1000~1002`: 데몬 서비스 수명주기 (Start, Stop, Abnormal Exit)
     - `2000~2002`: VPN 터널 수명주기 (Attempt, Established, Disconnected)
@@ -225,11 +227,11 @@
     - `4000~4003`: 에러/인증 실패 (Permission denied, Wintun 0x102 타임아웃, 계정 잠금, DPAPI 복호화 오류)
     - `5000~5001`: 마법사 프로필 변경 및 버전 업그레이드
   - `<System>` Envelope(TimeCreated, ProcessID, ThreadID, Level) + `<EventData>` 정형 페이로드 기록.
-- [ ] **FR-EVTX-03. Windows Event Source 등록 및 Custom View 바로가기 배포**:
+- [x] **FR-EVTX-03. Windows Event Source 등록 및 Custom View 바로가기 배포**:
   - 설치 시 `Application` 채널에 `OpenConnectSg` 이벤트 소스 공식 등록.
   - 시스템 경로 `%ProgramData%\Microsoft\Event Viewer\Views\OpenConnectSg.xml`에 전용 사용자 지정 보기 XML 배치 (이벤트 뷰어 좌측 트리에 'OpenConnectSg' 자동 노출).
   - 제거(`uninstall`) 시 이벤트 소스 및 Custom View XML 영구 삭제.
-- [ ] **FR-EVTX-04. 윈도우 기본 도구(Event Viewer) 원클릭 바로가기 연동**:
+- [x] **FR-EVTX-04. 윈도우 기본 도구(Event Viewer) 원클릭 바로가기 연동**:
   - **Tray GUI (`openconnectsg-tray.ps1`)**:
     - 메인 창 `$btnLog` ('로그 보기') 클릭 시 Windows 기본 이벤트 뷰어(`eventvwr.msc`) 즉시 기동 (사용자 지정 보기로 자동 연결).
     - 트레이 우클릭 컨텍스트 메뉴에 **"이벤트 뷰어 열기 (Event Viewer)"** 바로가기 메뉴 추가.
@@ -238,13 +240,13 @@
     - `openconnectsg logs --gui`: Windows 기본 이벤트 뷰어(`eventvwr.msc`) 즉시 실행.
   - **온디맨드 디버그 모드 (`openconnectsg connect <profile> --debug`)**:
     - 파일 생성 없이 현재 터미널 화면에만 원시 스트림을 실시간 콘솔 출력하는 심층 장애 추적 모드 지원.
-- [ ] **FR-EVTX-05. 독립적 기술보고서 작성 및 문서 허브 연계 (`docs/evtx-technical-guide.md`)**:
+- [x] **FR-EVTX-05. 독립적 기술보고서 작성 및 문서 허브 연계 (`docs/evtx-technical-guide.md`)**:
   - `docs/dpapi-technical-guide.md` 수준의 정밀 엔지니어링 기술보고서 구축 (7대 챕터: WES 및 BinXML 구조, <System>/<EventData> 스키마, 인메모리 스트림 드레이너, Custom View XML, 비교 매트릭스, XPath 및 SIEM/ITOM 가이드).
   - 프로젝트 문서 허브(`README.md`, `docs/openconnectsg.md`)에 공식 등재.
 
 ### 3. 단계별 개발 계획
-- [ ] **Phase 1: Event Log Provider 등록 및 Custom View XML 배포**
-- [ ] **Phase 2: 텍스트 로그 파일 설정 완전 제거 (`logs/` 폴더 및 NSSM 리다이렉션 폐지)**
-- [ ] **Phase 3: 인메모리 스트림 파서 및 `Write-OpenConnectSgEvent` 구현**
-- [ ] **Phase 4: CLI 진단 전환 (`Get-WinEvent`) 및 Tray GUI `eventvwr.msc` 바로가기 연동**
-- [ ] **Phase 5: 독립 기술보고서(`docs/evtx-technical-guide.md`) 작성 및 문서 허브 연계**
+- [x] **Phase 1: Event Log Provider 등록 및 Custom View XML 배포**
+- [x] **Phase 2: 텍스트 로그 파일 설정 완전 제거 (`logs/` 폴더 및 NSSM 리다이렉션 폐지)**
+- [x] **Phase 3: 인메모리 스트림 파서 및 `Write-OpenConnectSgEvent` 구현**
+- [x] **Phase 4: CLI 진단 전환 (`Get-WinEvent`) 및 Tray GUI `eventvwr.msc` 바로가기 연동**
+- [x] **Phase 5: 독립 기술보고서(`docs/evtx-technical-guide.md`) 작성 및 문서 허브 연계**

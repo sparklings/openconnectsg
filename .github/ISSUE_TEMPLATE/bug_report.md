@@ -25,9 +25,9 @@ Steps to reproduce the behavior:
 **Expected behavior**
 A clear and concise description of what you expected to happen.
 
-**Log Excerpt (C:\Program Files\OpenConnect\profiles\<service>\logs\err.log)**
+**Log Excerpt (Windows Event Log: `openconnectsg logs --raw --tail 30`)**
 ```
-Paste last 20 lines of err.log if applicable (sanitize any server IPs or usernames)
+Paste the output of `openconnectsg logs --raw --tail 30` if applicable (sanitize any server IPs or usernames)
 ```
 
 **Additional context**

@@ -123,7 +123,7 @@ powershell -ExecutionPolicy Bypass -File .\install\install-openconnectsg.ps1 -Sk
 \____/ .___/\___/_/ /_/\____/\____/_/ /_/_/ /_/\___/\___/\__//____/\__, /  
     /_/                                                           /____/   
  ==============================================================================
-  OpenConnectSg :: Windows Background Daemon & DPAPI Automation Wrapper (v1.0.4c)
+  OpenConnectSg :: Windows Background Daemon & DPAPI Automation Wrapper (v1.0.5)
  ==============================================================================
   [DEPLOY]   Target   : C:\Program Files\OpenConnect\bin
   [SYSTEM]   PATH     : Successfully registered (Machine Scope)
@@ -161,7 +161,7 @@ Windows는 설치 프로그램(자식 프로세스)이 시스템 PATH를 변경�
 ### 5.3. Verify Installation
 ```powershell
 openconnectsg version
-# 출력: openconnectsg 1.0.4c
+# 출력: openconnectsg 1.0.5
 ```
 
 ### 5.4. Run Initial Profile Setup Wizard
@@ -330,3 +330,14 @@ powershell -ExecutionPolicy Bypass -File .\install\install-openconnectsg.ps1 -Un
      ```powershell
      $tmp = "$env:TEMP\install-openconnectsg.ps1"; irm https://raw.githubusercontent.com/sparklings/openconnectsg/main/install/install-openconnectsg.ps1 -OutFile $tmp; powershell -ExecutionPolicy Bypass -File $tmp; Remove-Item $tmp -Force
      ```
+
+---
+
+## Event Log Registration (v1.0.5+)
+
+설치 스크립트는 파일 배포 직후 `openconnectsg event-init` 를 호출하여 다음을 등록합니다.
+
+* `Application` 이벤트 로그의 `OpenConnectSg` 이벤트 소스
+* 이벤트 뷰어 사용자 지정 보기: `%ProgramData%\Microsoft\Event Viewer\Views\OpenConnectSg.xml`
+
+확인: `eventvwr.msc` ▸ 사용자 지정 보기 ▸ **OpenConnectSg**, 또는 `openconnectsg logs --gui`. 제거(`uninstall`) 시 두 항목 모두 삭제됩니다.

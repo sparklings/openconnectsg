@@ -436,7 +436,7 @@ function New-Btn($text) {
 $btnConnect    = New-Btn '연결'
 $btnDisconnect = New-Btn '연결 해제'
 $btnAdd        = New-Btn '새 프로필…'
-$btnLog        = New-Btn '로그 보기'
+$btnLog        = New-Btn '이벤트 뷰어'
 $btnRefresh    = New-Btn '새로고침'
 $layout.Controls.Add($btnBar, 0, 1)
 
@@ -520,7 +520,7 @@ function Update-Buttons {
   $btnConnect.Enabled    = $isAdmin -and -not $busy -and $p -and $st -eq 'Disconnected'
   $btnDisconnect.Enabled = $isAdmin -and -not $busy -and $p -and $st -ne 'Disconnected'
   $btnAdd.Enabled        = $isAdmin -and -not $busy
-  $btnLog.Enabled        = [bool]$p
+  $btnLog.Enabled        = $true
   $chkAuto.Enabled       = $isAdmin
 }
 
@@ -650,6 +650,9 @@ function Rebuild-Menu {
   [void]$menu.Items.Add('-')
   $d = $menu.Items.Add('모두 연결 해제'); $d.Enabled = $isAdmin -and [bool]$active -and -not $script:job
   $d.Add_Click({ Do-DisconnectProfile $null })
+  $ev = $menu.Items.Add('이벤트 뷰어 열기 (Event Viewer)')
+  $ev.Add_Click({ Open-EventViewer })
+  [void]$menu.Items.Add('-')
   $o = $menu.Items.Add('창 열기'); $o.Font = New-Object System.Drawing.Font($font, [System.Drawing.FontStyle]::Bold)
   $o.Add_Click({ Show-Main })
   $x = $menu.Items.Add('종료')
@@ -717,12 +720,16 @@ $lv.Add_DoubleClick({
 $btnConnect.Add_Click({ Do-ConnectProfile (Get-Selected) })
 $btnDisconnect.Add_Click({ Do-DisconnectProfile (Get-Selected) })
 $btnRefresh.Add_Click({ Update-All -Force })
-$btnLog.Add_Click({
-    $p = Get-Selected; if (-not $p) { return }
-    $log = Join-Path $p.Dir 'logs\out.log'
-    if (Test-Path $log) { Start-Process notepad.exe -ArgumentList "`"$log`"" }
-    else { [void][System.Windows.Forms.MessageBox]::Show($form, "로그 파일이 없습니다:`n$log", 'OpenConnectSg') }
-  })
+function Open-EventViewer {
+  # Text logs are deprecated: open Windows Event Viewer at the OpenConnectSg Custom View.
+  try {
+    $view = Join-Path $env:ProgramData 'Microsoft\Event Viewer\Views\OpenConnectSg.xml'
+    if (Test-Path $view) { Start-Process eventvwr.msc -ArgumentList "/v:`"$view`"" } else { Start-Process eventvwr.msc }
+  } catch {
+    [void][System.Windows.Forms.MessageBox]::Show($form, "이벤트 뷰어를 열 수 없습니다: $($_.Exception.Message)", 'OpenConnectSg')
+  }
+}
+$btnLog.Add_Click({ Open-EventViewer })
 $btnAdd.Add_Click({
     # The setup wizard is interactive (password prompt), so it runs in a visible console.
     $cmd = "& '$cliPs1' setup; Write-Host ''; Read-Host '완료되었습니다. Enter 키를 누르면 창이 닫힙니다'"

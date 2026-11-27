@@ -124,6 +124,8 @@ openconnectsg <서브커맨드> [인자1] [인자2] ...
 
 ### 3.3. `connect` / `up` / `start` (VPN Connect)
 
+> **v1.0.5 `--debug` 옵션**: `openconnectsg connect [<profile>] --debug` 는 서비스를 거치지 않고 현재 콘솔에서 `openconnect.exe` 를 직접 실행하여 원시 출력을 실시간으로 표시합니다. 어떤 파일도 생성하지 않으며 `Ctrl+C` 로 종료합니다. 연결 실패 시에는 이벤트 로그 안내(`openconnectsg logs <profile>`)가 표시됩니다.
+
 선택한 프로필로 VPN 터널 연결을 시작합니다.
 
 - **문법**:
@@ -481,10 +483,10 @@ Windows 시스템 트레이(알림 영역)에 상주하는 WinForms GUI 도구�
   \____/ .___/\___/_/ /_/\____/\____/_/ /_/_/ /_/\___/\___/\__//____/\__, /  
       /_/                                                           /____/   
    ==============================================================================
-    OpenConnectSg :: System & Version Information (v1.0.4c)
+    OpenConnectSg :: System & Version Information (v1.0.5)
    ==============================================================================
 
-    Version       : openconnectsg 1.0.4c
+    Version       : openconnectsg 1.0.5
     Binary Path   : C:\Program Files\OpenConnect\bin
     Profiles Path : C:\Program Files\OpenConnect\profiles
     Repository    : https://github.com/sparklings/openconnectsg
@@ -514,3 +516,37 @@ Windows 시스템 트레이(알림 영역)에 상주하는 WinForms GUI 도구�
   openconnectsg -h
   openconnectsg --help
   ```
+
+### 3.14. `logs` / `log` (Windows Event Log Viewer)
+
+OpenConnectSg 이벤트 로그(EVTX)를 터미널에서 조회합니다. 텍스트 로그 파일은 더 이상 존재하지 않습니다.
+
+```powershell
+openconnectsg logs [<profile>] [--tail <n>] [--level error|warn] [--raw] [--gui]
+```
+
+| 옵션 | 설명 |
+|---|---|
+| `<profile>` | 프로필 식별자(인덱스/별칭/계정명/서비스명 일부). 생략 시 전체 프로필 |
+| `--tail <n>` | 표시할 최근 이벤트 수 (기본 15) |
+| `--level error` / `--level warn` | `error` 는 오류만, `warn` 은 경고+오류만 |
+| `--raw` | 이벤트 본문 전체(Profile/Server/Detail)를 한 줄로 표시 |
+| `--gui` | Windows 이벤트 뷰어(`eventvwr.msc`)를 OpenConnectSg 사용자 지정 보기로 실행 |
+
+**출력 예시**
+
+```text
+ ==============================================================================
+  OpenConnectSg :: Windows Event Log Viewer (EVTX)
+ ==============================================================================
+  Filter     : Source=OpenConnectSg, Profile=All, Level=All, Tail=15
+ ------------------------------------------------------------------------------
+  TIME (LOCAL)       LEVEL  EID   PROFILE / MESSAGE
+ ------------------------------------------------------------------------------
+  11-27 09:30:10.002 INFO   1000  openconnect_gw_443_ab12cd34  Service started. Server: gw.corp.com:443
+  11-27 09:30:14.890 INFO   2001  openconnect_gw_443_ab12cd34  VPN tunnel established. Detail: Connected as 10.20.1.50
+  11-27 09:30:15.120 WARN   3000  openconnect_gw_443_ab12cd34  DTLS handshake failed; falling back to TLS.
+ ==============================================================================
+```
+
+심각도별 색상: `ERROR`=Red, `WARN`=Yellow, `INFO`=Green. EventID 체계는 [EVTX 기술 가이드](evtx-technical-guide.md)를 참조하십시오.

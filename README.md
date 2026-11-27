@@ -9,7 +9,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Platform: Windows](https://img.shields.io/badge/Platform-Windows%2010%2F11%2FServer-blue.svg)]()
 [![Shell: PowerShell 5.1+](https://img.shields.io/badge/PowerShell-5.1%2B-blue.svg)]()
-[![Version: v1.0.4c](https://img.shields.io/badge/Version-v1.0.4c-green.svg)](CHANGELOG.md)
+[![Version: v1.0.5](https://img.shields.io/badge/Version-v1.0.5-green.svg)](CHANGELOG.md)
 
 ---
 
@@ -32,12 +32,13 @@
 | :--- | :--- | :--- |
 | **시스템 아키텍처** | `src/openconnectsg.ps1` | [시스템 구조 및 코어 설계](docs/architecture.md)<br>통합 데몬 러너, Wintun 터널 메커니즘, 프로세스 수명주기 |
 | **설치 및 배포** | `install/install-openconnectsg.ps1` | [배포 및 설치 가이드](docs/install-guide.md)<br>온라인/오프라인 환경별 배포 절차, 환경변수(PATH) 및 시스템 요구사항 |
-| **CLI 커맨드 레퍼런스** | `src/openconnectsg.cmd` | [서브커맨드 전체 매뉴얼](docs/subcommand-manual.md)<br>13개 서브커맨드 명세, 단축 별칭, 파라미터 및 TUI 출력 규격 |
+| **CLI 커맨드 레퍼런스** | `src/openconnectsg.cmd` | [서브커맨드 전체 매뉴얼](docs/subcommand-manual.md)<br>14개 서브커맨드 명세, 단축 별칭, 파라미터 및 TUI 출력 규격 |
 | **보안 및 자격 증명** | `src/init-openconnectsg.ps1`<br>`pw.bin`, `pin.txt` | [보안 및 자격 증명 관리](docs/security-credentials.md)<br>DPAPI LocalMachine 암호화, icacls 권한 잠금, pin-sha256 지문 고정 |
 | **DPAPI 심층 기술 가이드** | `.NET ProtectedData`<br>`pw.bin` | [DPAPI 심층 기술 가이드](docs/dpapi-technical-guide.md)<br>DPAPI 키 도출 구조, LocalMachine 스코프, 무인 데몬 주입 설계 |
 | **icacls 접근 제어 가이드** | `icacls.exe`<br>`NTFS DACL` | [icacls 접근 제어 가이드](docs/icacls-technical-guide.md)<br>NTFS 보안 모델, 상속 완전 차단(/inheritance:r), Well-Known SID 하드닝 |
-| **장애 진단 및 트러블슈팅** | `profiles/<service>/logs/*` | [장애 진단 및 문제 해결 가이드](docs/troubleshooting.md)<br>로그 분석법, Wintun 어댑터 0x102 타임아웃 해결, 계정 잠금 대응 |
-| **버전 및 변경 이력** | 전체 프로젝트 리포지토리 | [변경 이력 (CHANGELOG.md)](CHANGELOG.md)<br>버전별(v0.1.0 ~ v1.0.4c) 추가/수정/보안 패치 및 산출물 추적 |
+| **Windows 이벤트 로그 (EVTX)** | `Application` 채널 / `OpenConnectSg` 소스<br>`OpenConnectSg.xml` Custom View | [EVTX 기술 가이드](docs/evtx-technical-guide.md)<br>텍스트 로그 폐지, 인메모리 스트림 드레이너, EventID 체계, XPath/WEF 운영 |
+| **장애 진단 및 트러블슈팅** | Windows 이벤트 뷰어 / `openconnectsg logs` | [장애 진단 및 문제 해결 가이드](docs/troubleshooting.md)<br>이벤트 로그 분석법, Wintun 어댑터 0x102 타임아웃 해결, 계정 잠금 대응 |
+| **버전 및 변경 이력** | 전체 프로젝트 리포지토리 | [변경 이력 (CHANGELOG.md)](CHANGELOG.md)<br>버전별(v0.1.0 ~ v1.0.5) 추가/수정/보안 패치 및 산출물 추적 |
 
 ---
 
@@ -86,16 +87,17 @@ openconnectsg disconnect all       # 모든 활성 VPN 연결 해제
 |---|---|---|
 | `openconnectsg list` | `ls` | 등록된 프로필 및 런타임 연결 상태 표 출력 |
 | `openconnectsg status [<p>]` | - | 특정 프로필의 런타임 상태 단일 라인 조회 |
-| `openconnectsg connect [<p>]` | `up`, `start` | 지정 프로필로 VPN 터널 연결 (단일 연결 강제) |
+| `openconnectsg connect [<p>] [--debug]` | `up`, `start` | 지정 프로필로 VPN 터널 연결 (단일 연결 강제) |
 | `openconnectsg disconnect [<p\|all>]` | `down`, `stop` | 지정 프로필 또는 전체 활성 터널 안전 해제 |
 | `openconnectsg setup` | `add` | 새 VPN 프로필 추가 대화형 설정 마법사 |
 | `openconnectsg tray` | `gui` | 트레이 GUI 실행 (연결 제어, 네트워크/라우팅 뷰, 주소 경로 조회) |
+| `openconnectsg logs [<p>]` | `log` | Windows 이벤트 로그(EVTX) 조회 (`--tail`, `--level`, `--raw`, `--gui`) |
 | `openconnectsg alias <p> <별칭>` | `label` | 프로필에 호출용 별칭 부여 |
 | `openconnectsg default <p>` | - | 기본 접속 대상 프로필 포인터 지정 |
 | `openconnectsg remove <p>` | `rm`, `delete` | 프로필 구성 삭제 및 Windows 서비스 영구 등록 해제 |
 | `openconnectsg upgrade [<p>]` | `update` | 최신 소스로 바이너리 업그레이드 및 버전 검증 (`--force` 지원) |
 | `openconnectsg uninstall [<s\>]` | `un`, `purge` | 도구 제거 (범위: `app` 앱 전용 삭제, `full` 전체 완전 삭제) |
-| `openconnectsg version` | `-v` | 현재 버전 및 시스템 정보 출력 (`1.0.4c`) |
+| `openconnectsg version` | `-v` | 현재 버전 및 시스템 정보 출력 (`1.0.5`) |
 | `openconnectsg banner` | - | 웰컴 Slant ASCII Figlet 배너 출력 |
 | `openconnectsg help` | `-h` | CLI 도움말 및 배너 출력 |
 
@@ -103,15 +105,13 @@ openconnectsg disconnect all       # 모든 활성 VPN 연결 해제
 
 ---
 
-## Latest Release Information (v1.0.4c)
+## Latest Release Information (v1.0.5)
 
-* **원클릭 웹 자동 설치 호환성 패치 (`irm ... | iex`)**: `$PSScriptRoot`가 비어있는 인메모리 스트림 환경에서 `Split-Path` 매개 변수 바인딩 예외를 해결하고, 소스 디렉터리 폴백 로직을 보강했습니다.
-* **FIGlet ASCII 아트 배너 표준화**: 터미널 출력 배너를 단어 간 공백이 있던 `OpenConnect Sg`에서 결합형인 `OpenConnectSg`로 전면 갱신했습니다.
-* **트레이 GUI 및 시작 메뉴 바로가기 업그레이드 자동 배포 (`openconnectsg upgrade`)**: 버전이 일치하더라도 누락된 핵심 구성 요소를 감지하여 자동 복사하며, 시작 메뉴 바로가기(`OpenConnectSg.lnk`) 갱신 로직을 추가했습니다.
-* **트레이 GUI 및 네트워크/라우팅 가시화 (`openconnectsg tray`)**: WinForms 기반 알림 영역 트레이 애플리케이션 제공. 프로필 연결/해제, Full vs Split Tunnel 판별, 서브넷 계층도(CIDR 트리 뷰), 주소별 나가는 경로 실시간 조회를 지원하며 Windows 로그인 시 무인 자동 실행을 지원합니다.
-* **단일 자동 시작 터널 정책 보장**: 활성화된 프로필만 부팅 시 `Automatic`으로 두고 나머지는 `Manual`로 변경하여 재부팅 시 여러 터널이 동시 기동되는 충돌을 원천 차단합니다.
-* **관리자 권한 자동 검증 및 무중단 UAC 승격**: 일반 사용자 콘솔에서 `connect`, `disconnect`, `setup` 등 실행 시 자동으로 UAC 승격을 호출하여 권한 거부(`Access is denied`) 문제를 해결했습니다.
-* **프로세스 트리 완전 회수 & NSSM 오류 가시화**: 터널 해제 시 5초 내 미종료 상태인 `openconnect.exe` 자식 프로세스를 선제적으로 강제 회수하고 잔류 Wintun 어댑터를 자동 정리하며, 서비스 조작 실패 시 구체적인 사유를 화면에 노출합니다.
+* **순수 Windows 이벤트 로그(EVTX) 아키텍처 ([#12](https://github.com/sparklings/openconnectsg/issues/12))**: `out.log` / `err.log` 텍스트 로그 파일을 전면 폐지하고 `Application` 이벤트 로그(소스 `OpenConnectSg`)를 단일 신뢰 원천으로 전환했습니다. 디스크 쓰레기 파일, 파일 잠금, 로그 회전 문제가 사라집니다.
+* **인메모리 스트림 드레이너**: `openconnect.exe`의 stdout/stderr를 메모리에서 즉시 소비하여 OS 파이프 버퍼(4KB) 고갈로 인한 데몬 멈춤을 방지하고, 15개 표준 EventID(1000~5001)로 정형화하여 기록합니다.
+* **`openconnectsg logs`**: 컬러 TUI로 최근 이벤트 조회 (`--tail`, `--level`, `--raw`, `--gui`). `openconnectsg connect <profile> --debug` 는 파일 생성 없이 원시 스트림을 콘솔에 출력합니다.
+* **이벤트 뷰어 바로가기**: 설치/설정/업그레이드 시 `OpenConnectSg` 사용자 지정 보기(Custom View)를 배포하고, 트레이 GUI의 **이벤트 뷰어** 버튼과 트레이 우클릭 메뉴에서 즉시 엽니다.
+* **자동 마이그레이션**: 기존 설치의 NSSM 로그 리다이렉션과 `logs` 폴더는 다음 연결/서비스 시작/업그레이드 시 자동 제거됩니다.
 
 전체 버전별 세부 변경 사항은 [CHANGELOG.md](CHANGELOG.md)에서 확인하실 수 있습니다.
 

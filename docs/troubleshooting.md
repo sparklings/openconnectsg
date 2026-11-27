@@ -4,25 +4,35 @@
 
 ---
 
-## 1. Log File Locations & Real-Time Diagnostics
+## 1. Event Log Locations & Real-Time Diagnostics
 
-연결 문제 발생 시 가장 먼저 확인해야 할 산출물은 대상 프로필의 로그 파일입니다.
+v1.0.5부터 텍스트 로그 파일(`out.log`, `err.log`)은 생성되지 않습니다. 연결 문제 발생 시 가장 먼저 확인할 산출물은 **Windows 이벤트 로그** (`Application` 채널, 소스 `OpenConnectSg`) 입니다.
 
-### Log Storage Directory
-```
-C:\Program Files\OpenConnect\profiles\<서비스명>\logs\
-├── out.log   # openconnect.exe 표준 출력 (연결 성공, IP 할당, 라우팅 테이블)
-└── err.log   # openconnect.exe 표준 에러 및 인증 오류, 핸드셰이크 경고
-```
-
-### Real-Time Log Monitoring Commands
+### Event Log Quick Commands
 ```powershell
-# 특정 프로필의 에러 로그 실시간 추적 (PowerShell)
-Get-Content "C:\Program Files\OpenConnect\profiles\<서비스명>\logs\err.log" -Wait -Tail 30
-
-# 최근 50줄 출력
-Get-Content "C:\Program Files\OpenConnect\profiles\<service_name>\logs\out.log" -Tail 50
+openconnectsg logs                       # 최근 15건 (전체 프로필)
+openconnectsg logs <profile> --tail 50   # 특정 프로필 최근 50건
+openconnectsg logs --level error         # 오류만
+openconnectsg logs --raw                 # 이벤트 본문 전체 (Profile/Server/Detail)
+openconnectsg logs --gui                 # Windows 이벤트 뷰어 (사용자 지정 보기 ▸ OpenConnectSg)
+openconnectsg connect <profile> --debug  # 파일 없이 원시 openconnect 출력을 콘솔에 스트리밍
 ```
+
+### PowerShell 직접 조회 (XPath)
+```powershell
+Get-WinEvent -FilterHashtable @{ LogName='Application'; ProviderName='OpenConnectSg'; Level=2 } -MaxEvents 20
+Get-WinEvent -LogName Application -FilterXPath "*[System[Provider[@Name='OpenConnectSg'] and (EventID=4000 or EventID=4002)]]"
+```
+
+### EventID Quick Reference
+| EventID | 의미 | 조치 |
+|---|---|---|
+| 4000 | 인증 거부 (Permission denied) | `openconnectsg setup` 으로 계정/비밀번호 재설정 |
+| 4001 | Wintun 어댑터 타임아웃 (0x102) | `openconnectsg upgrade --force` 후 어댑터 정리 |
+| 4002 | 방화벽 계정 잠금 | 3~5분 대기 후 재시도 |
+| 4003 | DPAPI 복호화 실패 | 동일 PC/LocalMachine 범위에서 `setup` 재실행 |
+| 3000 | DTLS 실패 → TLS 폴백 | 정상 동작 (경고) |
+| 1002 | 프로세스 비정상 종료 | 직전 4xxx 이벤트 확인, `--debug` 로 재현 |
 
 ---
 
@@ -33,7 +43,7 @@ flowchart TD
     Start(["VPN 연결 문제 발생"]) --> Step1{"서비스 상태 확인<br/><code>openconnectsg status</code>"}
     
     Step1 -->|"Running 상태이나 통신 불가"| Step2{"IP / Routing 확인<br/><code>ipconfig</code>"}
-    Step1 -->|"Stopped / Paused 상태"| Step3{"로그 파일 분석<br/><code>err.log / out.log</code>"}
+    Step1 -->|"Stopped / Paused 상태"| Step3{"이벤트 로그 분석<br/><code>openconnectsg logs</code>"}
     
     Step2 -->|"Wintun 어댑터 없음 / 0x102"| Fix1["어댑터 재설정<br/><code>openconnectsg disconnect all</code><br/><code>Restart-NetAdapter *Wintun*</code>"]
     Step2 -->|"사내망 IP 핑 실패"| Fix2["VPN 단일 터널 확인<br/>기존 터널 충돌 여부 점검"]
@@ -49,7 +59,7 @@ flowchart TD
 ## 3. Common Errors, Causes & Remediation
 
 ### ① Wintun Adapter Creation Timeout (`0x102` / `CreateTun: Wait failed`)
-* **현상**: `err.log`에 `Failed to create Wintun adapter: 0x102` 또는 타임아웃 에러가 발생하며 터널이 형성되지 않음.
+* **현상**: 이벤트 로그(`openconnectsg logs`)에 `Failed to create Wintun adapter: 0x102` 또는 타임아웃 에러가 발생하며 터널이 형성되지 않음.
 * **원인**: 이전 세션에서 생성된 가상 어댑터가 비정상 종료되어 잠겨 있거나, 설정 파일에 특정 인터페이스명이 고정(`interface=...`)되어 충돌한 경우.
 * **해결책**:
   1. OpenConnectSg v0.1.2a 이상에서는 자체 소독(sanitize) 및 정리 로직이 내장되어 있습니다. 최신 버전으로 업그레이드합니다:
@@ -99,7 +109,7 @@ flowchart TD
   ```
 
 ### ⑥ Fortinet SSL-VPN DTLS Failure & Session Cookie Rejection (`Cookie is no longer valid, ending session` / `Cookie was rejected by server; exiting`)
-* **현상**: `err.log`에 `svrhello status was "fail" rather than "ok"`, `Failed to connect DTLS tunnel; using HTTPS instead`, `Cookie is no longer valid, ending session`, `Cookie was rejected by server; exiting.`이 반복되며 VPN 연결이 해제됨.
+* **현상**: 이벤트 로그(`openconnectsg logs`)에 `svrhello status was "fail" rather than "ok"`, `Failed to connect DTLS tunnel; using HTTPS instead`, `Cookie is no longer valid, ending session`, `Cookie was rejected by server; exiting.`이 반복되며 VPN 연결이 해제됨.
 * **원인**: FortiGate 방화벽의 DTLS 핸드셰이크가 실패하고 OpenConnect가 기존 HTTPS(TLS) 터널로 fallback을 시도하지만, FortiGate의 세션 쿠키 단발성 정책(`reconnect-after-drop is not allowed`)으로 인해 이전 쿠키가 거부되어 세션이 파기됨.
 * **해결책**:
   - `openconnect.conf`에 `no-dtls` 옵션을 명시하여 불안정한 DTLS 대신 검증된 표준 TLS 터널로만 연결하도록 강제.

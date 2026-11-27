@@ -1,7 +1,7 @@
 ﻿#Requires -RunAsAdministrator
 <#
 .SYNOPSIS
-  openconnectsg profile setup wizard (invoked by 'openconnectsg setup', v1.0.4c)
+  openconnectsg profile setup wizard (invoked by 'openconnectsg setup', v1.0.5)
 .DESCRIPTION
   Interactive wizard that prompts for remote VPN host, port, credentials,
   verifies binary dependencies with cryptographic checksums, encrypts credentials via DPAPI,
@@ -145,7 +145,7 @@ Write-Host " / / / / __ \/ _ \/ __ \/ /   / __ \/ __ \/ __ \/ _ \/ ___/ __/\__ \
 Write-Host "/ /_/ / /_/ /  __/ / / / /___/ /_/ / / / / / / /  __/ /__/ /_ ___/ / /_/ / " -ForegroundColor Cyan
 Write-Host "\____/ .___/\___/_/ /_/\____/\____/_/ /_/_/ /_/\___/\___/\__//____/\__, /  " -ForegroundColor Cyan
 Write-Host "    /_/                                                           /____/   " -ForegroundColor Cyan
-$version = '1.0.4c'
+$version = '1.0.5'
 if (-not [string]::IsNullOrWhiteSpace($PSScriptRoot)) {
   $mainPs1 = Join-Path $PSScriptRoot 'openconnectsg.ps1'
   if (Test-Path $mainPs1) {
@@ -243,11 +243,10 @@ $nssmDir = Join-Path $programFiles "nssm"
 $binDir  = Join-Path $ocRoot "bin"
 $root    = Join-Path $ocRoot "profiles"
 $dir     = Join-Path $root $svcName
-$logs    = Join-Path $dir "logs"
 
 # 1) Directories Setup
 Write-Step "[1/7] Initializing profile workspace..."
-New-Item -ItemType Directory -Path $nssmDir, $ocRoot, $binDir, $logs, $dir -Force | Out-Null
+New-Item -ItemType Directory -Path $nssmDir, $ocRoot, $binDir, $dir -Force | Out-Null
 Write-Gap
 
 # 2) NSSM 2.24 Dependency & Integrity Verification
@@ -523,10 +522,10 @@ $base = Join-Path $key "Parameters"
 Set-ItemProperty $base Application $psExe
 Set-ItemProperty $base AppDirectory $ocRoot
 Set-ItemProperty $base AppParameters "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$dispatcherPs1`" service-run $svcName"
-Set-ItemProperty $base AppStdout (Join-Path $logs "out.log")
-Set-ItemProperty $base AppStderr (Join-Path $logs "err.log")
-Set-ItemProperty $base AppRotateFiles 1 -Type DWord
-Set-ItemProperty $base AppRotateBytes 1048576 -Type DWord
+# Logging policy: no text log files. Diagnostics go to the Windows Event Log (source 'OpenConnectSg').
+foreach ($legacy in 'AppStdout','AppStderr','AppRotateFiles','AppRotateBytes') {
+  Remove-ItemProperty -Path $base -Name $legacy -ErrorAction SilentlyContinue
+}
 
 $appExit = Join-Path $base "AppExit"
 if (-not (Test-Path $appExit)) { New-Item -Path $appExit -Force | Out-Null }
@@ -534,6 +533,13 @@ Set-ItemProperty $appExit Default Restart
 Set-ItemProperty $base Start -Value SERVICE_AUTO_START
 Set-ItemProperty $key  DisplayName $dispName
 Set-Service -Name $svcName -StartupType Automatic
+
+# Event Log source + Event Viewer Custom View (idempotent), then record profile creation (EventID 5000)
+try { & $psExe -NoProfile -ExecutionPolicy Bypass -File $dispatcherPs1 event-init 2>&1 | Out-Null } catch { }
+try {
+  Write-EventLog -LogName Application -Source 'OpenConnectSg' -EventId 5000 -EntryType Information `
+    -Message "Profile: $svcName`r`nVPN profile created or updated (setup wizard)." -ErrorAction Stop
+} catch { }
 
 $prevEAP = $ErrorActionPreference
 $ErrorActionPreference = 'SilentlyContinue'

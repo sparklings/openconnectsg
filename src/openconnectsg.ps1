@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 <#
 .SYNOPSIS
   openconnectsg - Unified CLI tool for OpenConnect VPN profile management and service orchestration.
@@ -13,7 +13,7 @@
 $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $OutputEncoding = [System.Text.Encoding]::UTF8
-$script:Version = '1.0.4c'
+$script:Version = '1.0.5'
 
 $programFiles = if ([string]::IsNullOrWhiteSpace($env:ProgramFiles)) { 'C:\Program Files' } else { $env:ProgramFiles }
 $ocRoot       = Join-Path $programFiles 'OpenConnect'
@@ -22,6 +22,105 @@ $nssmDir      = Join-Path $programFiles 'nssm'
 $nssm         = Join-Path $nssmDir 'nssm.exe'
 $binDir       = Join-Path $ocRoot 'bin'
 $defaultFile  = Join-Path $root 'default.txt'
+
+# --- Windows Event Log (EVTX) infrastructure ---------------------------------
+$script:EventSource = 'OpenConnectSg'
+
+function Register-OcsEventInfra {
+  # Register the Application-log event source and the Event Viewer Custom View (idempotent).
+  try {
+    if (-not [System.Diagnostics.EventLog]::SourceExists($script:EventSource)) {
+      [System.Diagnostics.EventLog]::CreateEventSource($script:EventSource, 'Application')
+    }
+  } catch {}
+  try {
+    $viewDir = Join-Path $env:ProgramData 'Microsoft\Event Viewer\Views'
+    if (-not (Test-Path $viewDir)) { New-Item -ItemType Directory -Path $viewDir -Force | Out-Null }
+    $xml = @'
+<ViewerConfig>
+  <QueryConfig>
+    <QueryParams><UserQuery /></QueryParams>
+    <QueryNode>
+      <Name>OpenConnectSg</Name>
+      <Description>OpenConnectSg VPN service events</Description>
+      <QueryList>
+        <Query Id="0" Path="Application">
+          <Select Path="Application">*[System[Provider[@Name='OpenConnectSg']]]</Select>
+        </Query>
+      </QueryList>
+    </QueryNode>
+  </QueryConfig>
+</ViewerConfig>
+'@
+    [System.IO.File]::WriteAllText((Join-Path $viewDir 'OpenConnectSg.xml'), $xml, (New-Object System.Text.UTF8Encoding($false)))
+  } catch {}
+}
+
+function Unregister-OcsEventInfra {
+  try { if ([System.Diagnostics.EventLog]::SourceExists($script:EventSource)) { [System.Diagnostics.EventLog]::DeleteEventSource($script:EventSource) } } catch {}
+  try {
+    $view = Join-Path $env:ProgramData 'Microsoft\Event Viewer\Views\OpenConnectSg.xml'
+    if (Test-Path $view) { Remove-Item $view -Force -ErrorAction SilentlyContinue }
+  } catch {}
+}
+
+function Write-OcsEvent {
+  # EventID taxonomy: 1000-1002 service, 2000-2002 tunnel, 3000-3002 warning, 4000-4003 error, 5000-5001 admin
+  param([int]$Id, [ValidateSet('Information','Warning','Error')][string]$Level = 'Information', [string]$ProfileName = '', [string]$Message = '')
+  try {
+    $body = "Profile: $ProfileName`r`n$Message"
+    Write-EventLog -LogName Application -Source $script:EventSource -EventId $Id -EntryType $Level -Message $body -ErrorAction Stop
+  } catch {}
+}
+
+function Get-OcsEvents {
+  param([string]$ProfileName, [int]$Max = 15, $Since, [int[]]$Levels)
+  try {
+    $f = @{ LogName = 'Application'; ProviderName = $script:EventSource }
+    if ($Since) { $f.StartTime = [datetime]$Since }
+    if ($Levels) { $f.Level = $Levels }
+    $ev = @(Get-WinEvent -FilterHashtable $f -MaxEvents 1000 -ErrorAction SilentlyContinue)
+    if ($ProfileName) {
+      $rx = '(?m)^Profile:\s*' + [regex]::Escape($ProfileName) + '\s*$'
+      $ev = @($ev | Where-Object { $_.Message -match $rx })
+    }
+    return @($ev | Select-Object -First $Max)
+  } catch { return @() }
+}
+
+function Get-OcsEventDetail {
+  param($Event)
+  $lines = @(($Event.Message -split "`r?`n") | Where-Object { $_ -and $_ -notmatch '^(Profile|Server):' })
+  return ($lines -join ' ')
+}
+
+function Get-OcsRecentIssues {
+  # Warnings/errors since the latest service start (EventID 1000) for a profile.
+  param([string]$ProfileName)
+  $ev = @(Get-OcsEvents -ProfileName $ProfileName -Max 200)
+  for ($i = 0; $i -lt $ev.Count; $i++) {
+    if ($ev[$i].Id -eq 1000) { $ev = @($ev[0..$i]); break }
+  }
+  return @($ev | Where-Object { $_.Level -in 2, 3 } | Select-Object -First 3)
+}
+
+function Invoke-LogMigration {
+  # Remove legacy text-log configuration (NSSM AppStdout/AppStderr) and logs\ directory. Idempotent.
+  param([string]$ServiceName)
+  if ([string]::IsNullOrWhiteSpace($ServiceName)) { return }
+  try {
+    $base = "HKLM:\SYSTEM\CurrentControlSet\Services\$ServiceName\Parameters"
+    if (Test-Path $base) {
+      foreach ($n in 'AppStdout','AppStderr','AppRotateFiles','AppRotateBytes') {
+        Remove-ItemProperty -Path $base -Name $n -ErrorAction SilentlyContinue
+      }
+    }
+  } catch {}
+  try {
+    $ld = Join-Path (Join-Path $root $ServiceName) 'logs'
+    if (Test-Path $ld) { Remove-Item $ld -Recurse -Force -ErrorAction SilentlyContinue }
+  } catch {}
+}
 
 function Show-Banner {
   param([string]$SubTitle = "Windows Background Daemon & DPAPI Automation Wrapper")
@@ -294,8 +393,7 @@ function Stop-TunnelProcess {
   } catch {}
 
   if ($final -eq 'Stopped') {
-    $errPath = Join-Path $pDir 'logs\err.log'
-    if (Test-Path $errPath) { try { Set-Content -Path $errPath -Value $null -Force } catch {} }
+    Write-OcsEvent -Id 2002 -ProfileName $ServiceName -Message 'VPN tunnel disconnected (service stopped).'
     $hbPath = Join-Path $pDir 'heartbeat.status'
     if (Test-Path $hbPath) { try { Set-Content -Path $hbPath -Value "LastReceived=$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')`r`nCount=0`r`nStatus=STOPPED`r`n" -Force } catch {} }
   }
@@ -304,12 +402,15 @@ function Stop-TunnelProcess {
 }
 
 function Do-Connect {
-  param($profiles, $token)
+  param($profiles, $token, [bool]$debugMode = $false)
   $callArgs = @('connect')
   if (-not [string]::IsNullOrWhiteSpace($token)) { $callArgs += $token }
+  if ($debugMode) { $callArgs += '--debug' }
   Ensure-AdminPrivilege 'connect' $callArgs
 
   $t = Resolve-Profile $profiles $token
+  Register-OcsEventInfra
+  Invoke-LogMigration $t.Name
   $profConf = Join-Path (Join-Path $root $t.Name) 'openconnect.conf'
   if (Test-Path $profConf) {
     try {
@@ -341,6 +442,14 @@ function Do-Connect {
   }
 
   $cur = Get-Service -Name $t.Name -ErrorAction SilentlyContinue
+  if ($debugMode) {
+    # On-demand debug mode: run openconnect in this console, stream raw output, write no files.
+    if ($cur -and [string]$cur.Status -ne 'Stopped') { [void](Stop-TunnelProcess $t.Name) }
+    Write-Host " [Debug] Raw openconnect stream for '$($t.Name)' (Ctrl+C to stop). No log files are written." -ForegroundColor Yellow
+    Write-Host ""
+    Do-ServiceRun $t.Name -DebugConsole
+    return 0
+  }
   if ($cur -and [string]$cur.Status -eq 'Running') {
     Write-Host " Already connected: $($t.Name)" -ForegroundColor Yellow
     Write-Host ""
@@ -359,6 +468,7 @@ function Do-Connect {
     [void](Wait-ServiceStatus $t.Name 'Stopped' 10)
   }
 
+  $attemptStart = (Get-Date).AddSeconds(-2)
   [void](Invoke-Nssm @('start', $t.Name))
   Set-Content $defaultFile $t.Name -NoNewline -Encoding ascii
   Set-AutoStartProfile $t.Name
@@ -366,11 +476,9 @@ function Do-Connect {
   Write-Host "   Waiting for running status..." -ForegroundColor Gray
   $final = Wait-ServiceStatus $t.Name 'Running' 15
   if ($final -ne 'Running') {
-    $errFile = "$root\$($t.Name)\logs\err.log"
-    $outFile = "$root\$($t.Name)\logs\out.log"
-    $combined = ""
-    if (Test-Path $errFile) { $combined += "`n" + ((Get-Content $errFile -Tail 5 -ErrorAction SilentlyContinue) -join "`n") }
-    if (Test-Path $outFile) { $combined += "`n" + ((Get-Content $outFile -Tail 5 -ErrorAction SilentlyContinue) -join "`n") }
+    Start-Sleep -Milliseconds 800
+    $evs = @(Get-OcsEvents -ProfileName $t.Name -Max 20 -Since $attemptStart)
+    $combined = (@($evs | Sort-Object TimeCreated | ForEach-Object { Get-OcsEventDetail $_ }) -join "`n")
 
     Write-Host ""
     Write-Host " ==============================================================================" -ForegroundColor DarkGray
@@ -405,9 +513,10 @@ function Do-Connect {
       }
     }
     Write-Host ""
-    Write-Host " [Log Files]" -ForegroundColor Cyan
-    Write-Host "   $outFile" -ForegroundColor DarkCyan
-    Write-Host "   $errFile" -ForegroundColor DarkCyan
+    Write-Host " [Event Log]" -ForegroundColor Cyan
+    Write-Host "   openconnectsg logs $($t.Name)        (recent events)" -ForegroundColor DarkCyan
+    Write-Host "   openconnectsg logs --gui            (Windows Event Viewer)" -ForegroundColor DarkCyan
+    Write-Host "   openconnectsg connect $($t.Name) --debug   (raw stream)" -ForegroundColor DarkCyan
     Write-Host ""
     Write-Host " ==============================================================================" -ForegroundColor DarkGray
     Write-Host ""
@@ -572,33 +681,26 @@ function Do-Status {
     }
   }
 
-  $errFile = Join-Path $profDir 'logs\err.log'
   $hasErr = $false
   if ($status -eq 'Stopped') {
     Write-Host ""
     Write-Host " [Recent Error]" -ForegroundColor Cyan
     Write-Host "   None (Service is stopped)" -ForegroundColor DarkGray
   } else {
-    if (Test-Path $errFile) {
-      $errLen = (Get-Item $errFile).Length
-      if ($errLen -gt 0) {
-        $recentErrLines = @(Get-Content $errFile -Tail 10 -ErrorAction SilentlyContinue | Where-Object {
-          $_ -notmatch 'WARNING: Support for Wintun is experimental|install the TAP-Windows driver instead|Using Wintun device|https://www\.infradead\.org' -and -not [string]::IsNullOrWhiteSpace($_.Trim())
-        })
-        if ($recentErrLines.Count -gt 0) {
-          $hasErr = $true
-          Write-Host ""
-          Write-Host " [Recent Error]" -ForegroundColor Red
-          $recentErrLines | Select-Object -Last 3 | ForEach-Object {
-            Write-Host "   $_" -ForegroundColor DarkRed
-          }
-        }
+    $issues = @(Get-OcsRecentIssues $t.Name)
+    if ($issues.Count -gt 0) {
+      $hasErr = $true
+      Write-Host ""
+      Write-Host " [Recent Error]" -ForegroundColor Red
+      foreach ($e in $issues) {
+        $c = if ($e.Level -eq 2) { 'DarkRed' } else { 'DarkYellow' }
+        Write-Host ("   {0:MM-dd HH:mm:ss} EID {1} {2}" -f $e.TimeCreated, $e.Id, (Get-OcsEventDetail $e)) -ForegroundColor $c
       }
     }
     if (-not $hasErr) {
       Write-Host ""
       Write-Host " [Recent Error]" -ForegroundColor Cyan
-      Write-Host "   None (Logs are clean)" -ForegroundColor DarkGray
+      Write-Host "   None (No warnings or errors in the Event Log)" -ForegroundColor DarkGray
     }
   }
 
@@ -807,6 +909,9 @@ function Do-Uninstall {
     [Environment]::SetEnvironmentVariable('Path', $newPath, 'Machine')
     Write-Host "  Removed $binDir from System PATH."
   }
+
+  Unregister-OcsEventInfra
+  Write-Host "  Removed Event Log source and Event Viewer Custom View."
 
   # Remove tray GUI logon task and Start Menu shortcut
   try { Unregister-ScheduledTask -TaskName 'OpenConnectSg Tray' -Confirm:$false -ErrorAction Stop; Write-Host "  Removed tray logon task." } catch { }
@@ -1071,14 +1176,7 @@ function Do-Upgrade {
     $profDir = Join-Path $ocRoot 'profiles'
     if (Test-Path $profDir) {
       Get-ChildItem -Path $profDir -Directory -ErrorAction SilentlyContinue | ForEach-Object {
-        $errPath = Join-Path $_.FullName 'logs\err.log'
-        if (Test-Path $errPath) {
-          $sample = Get-Content $errPath -Tail 10 -ErrorAction SilentlyContinue
-          if ($sample -match 'Unexpected pre-PPP packet header|GFtype\.heartbeat') {
-            Write-Host "   Purging legacy heartbeat log from $($_.Name)..." -ForegroundColor Gray
-            Set-Content -Path $errPath -Value $null -Force
-          }
-        }
+        Invoke-LogMigration $_.Name
         $confPath = Join-Path $_.FullName 'openconnect.conf'
         if (Test-Path $confPath) {
           $cLines = @(Get-Content $confPath -ErrorAction SilentlyContinue | Where-Object { $_ -notmatch '^interface=' -and $_ -notmatch '^force-dpd=' })
@@ -1090,6 +1188,8 @@ function Do-Upgrade {
         }
       }
     }
+    Register-OcsEventInfra
+    Write-OcsEvent -Id 5001 -ProfileName '-' -Message "openconnectsg upgraded to $newVer."
     Write-Host "   Status            : Binaries deployed and profile configurations sanitized." -ForegroundColor Green
 
     Write-Host ""
@@ -1121,7 +1221,7 @@ function Do-Upgrade {
 
 # --- Service Daemon Runner (Internal entry point invoked by NSSM) ---
 function Do-ServiceRun {
-  param([string]$ServiceName)
+  param([string]$ServiceName, [switch]$DebugConsole)
   if ([string]::IsNullOrWhiteSpace($ServiceName)) {
     Write-Error "service-run requires a ServiceName argument."
     exit 1
@@ -1136,7 +1236,10 @@ function Do-ServiceRun {
     Write-Error "Service $ServiceName is already running (Mutex held)."
     exit 1
   }
+  $dpapiFailed = $false
   try {
+    Register-OcsEventInfra
+    Invoke-LogMigration $ServiceName
     Add-Type -AssemblyName System.Security
     $pwFile = Join-Path $dir 'pw.bin'
     $confFile = Join-Path $dir 'openconnect.conf'
@@ -1144,6 +1247,7 @@ function Do-ServiceRun {
     if (-not (Test-Path $confFile)) { throw "Configuration file not found: $confFile" }
 
     # Sanitize configuration: strip problematic interface= override causing Wintun adapter creation timeout
+    $serverText = ''
     try {
       $confLines = @(Get-Content $confFile -ErrorAction SilentlyContinue | Where-Object { $_ -notmatch '^interface=' -and $_ -notmatch '^force-dpd=' })
       $isFortinet = $confLines | Where-Object { $_ -match '^protocol=fortinet' }
@@ -1151,95 +1255,137 @@ function Do-ServiceRun {
         $confLines += "no-dtls"
       }
       Set-Content -Path $confFile -Value $confLines -Encoding ascii
+      $sl = $confLines | Where-Object { $_ -match '^server=' } | Select-Object -First 1
+      if ($sl) { $serverText = ($sl -replace '^server=', '').Trim() -replace '^https?://', '' }
     } catch {}
+
+    Write-OcsEvent -Id 1000 -ProfileName $ServiceName -Message "Service started. Server: $serverText"
 
     # Clean up any stale/ghost Wintun devices in error state to prevent CM_PROB_DISABLED_SERVICE (0x20) / timeout (0x102)
     try {
-      Get-PnpDevice -Class Net -ErrorAction SilentlyContinue | Where-Object {
+      $stale = @(Get-PnpDevice -Class Net -ErrorAction SilentlyContinue | Where-Object {
         $_.InstanceId -like "*WINTUN*" -and ($_.Status -ne 'OK' -or $_.Problem -ne 'CM_PROB_NONE')
-      } | ForEach-Object {
-        & pnputil /remove-device $_.InstanceId 2>&1 | Out-Null
+      })
+      foreach ($d in $stale) { & pnputil /remove-device $d.InstanceId 2>&1 | Out-Null }
+      if ($stale.Count -gt 0) {
+        Write-OcsEvent -Id 3001 -Level Warning -ProfileName $ServiceName -Message "Removed $($stale.Count) stale Wintun adapter(s) in error state."
       }
     } catch {}
 
-    $enc = [System.IO.File]::ReadAllBytes($pwFile)
-    $raw = [System.Security.Cryptography.ProtectedData]::Unprotect($enc, $null, 'LocalMachine')
+    try {
+      $enc = [System.IO.File]::ReadAllBytes($pwFile)
+      $raw = [System.Security.Cryptography.ProtectedData]::Unprotect($enc, $null, 'LocalMachine')
+    } catch {
+      $dpapiFailed = $true
+      Write-OcsEvent -Id 4003 -Level Error -ProfileName $ServiceName -Message "DPAPI credential decryption failed: $($_.Exception.Message)"
+      throw
+    }
     $enc = $null
     $pw = [System.Text.Encoding]::Unicode.GetString($raw)
     [System.Array]::Clear($raw, 0, $raw.Length)
 
-    $logsDir = Join-Path $dir 'logs'
-    if (-not (Test-Path $logsDir)) { New-Item -ItemType Directory -Path $logsDir -Force | Out-Null }
-    $errLog = Join-Path $logsDir 'err.log'
-    if (Test-Path $errLog) {
-      try { Set-Content -Path $errLog -Value $null -Force } catch {}
-    }
     $hbStatus = Join-Path $dir 'heartbeat.status'
     try {
       Set-Content -Path $hbStatus -Value "LastReceived=$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')`r`nCount=0`r`nStatus=STARTING`r`n" -Force
     } catch {}
 
-    if (-not ('OpenConnectSg.StderrFilter' -as [type])) {
-      $filterCs = @'
+    if (-not ('OpenConnectSg.StreamDrainer' -as [type])) {
+      $drainerCs = @'
 namespace OpenConnectSg {
   using System;
+  using System.Collections.Generic;
+  using System.Diagnostics;
   using System.IO;
   using System.Text.RegularExpressions;
   using System.Threading;
 
-  public static class StderrFilter {
-    private static readonly Regex HeartbeatRegex = new Regex(
-      @"Unexpected pre-PPP packet header|GFtype\.heartbeat|< 00[0-9a-fA-F]{2}:",
-      RegexOptions.Compiled | RegexOptions.IgnoreCase
-    );
+  // Drains openconnect stdout/stderr entirely in memory (prevents 4KB pipe-buffer deadlock),
+  // tracks keepalive heartbeats, and translates meaningful lines into Windows Event Log entries.
+  public sealed class StreamDrainer {
+    const string Source = "OpenConnectSg";
+    static readonly RegexOptions O = RegexOptions.Compiled | RegexOptions.IgnoreCase;
+    static readonly Regex Heartbeat   = new Regex(@"Unexpected pre-PPP packet header|GFtype\.heartbeat|< 00[0-9a-fA-F]{2}:", O);
+    static readonly Regex Connecting  = new Regex(@"Attempting to connect to server|Connected to HTTPS on", O);
+    static readonly Regex Established = new Regex(@"Connected as |Configured as ", O);
+    static readonly Regex DtlsFail    = new Regex(@"DTLS handshake failed|Failed to establish DTLS|DTLS connection attempt failed|DTLS.*(?:timed? ?out|fail)", O);
+    static readonly Regex Lockout     = new Regex(@"Too many bad login attempts", O);
+    static readonly Regex AuthFail    = new Regex(@"sslvpn_login_permission_denied|Permission denied|Failed to complete authentication|fgetws|401 Unauthorized", O);
+    static readonly Regex WintunFail  = new Regex(@"Failed to open tun|Wintun.*(?:timeout|timed out|failed)|0x102|Timed out waiting for .*(?:adapter|interface)", O);
+    static readonly Regex Noise       = new Regex(@"WARNING: Support for Wintun is experimental|install the TAP-Windows driver instead|Using Wintun device|https://www\.infradead\.org", O);
 
-    public static Thread StartProcessing(StreamReader reader, string hbStatusPath) {
-      Thread thread = new Thread(() => {
-        try {
-          long count = 0;
-          string line;
-          DateTime lastStatusWrite = DateTime.MinValue;
+    readonly string profile, server, hbPath;
+    readonly bool debug;
+    readonly object gate = new object();
+    readonly Dictionary<int, DateTime> lastEmit = new Dictionary<int, DateTime>();
+    long hbCount;
+    DateTime lastHb = DateTime.MinValue, lastStatus = DateTime.MinValue;
 
-          while ((line = reader.ReadLine()) != null) {
-            if (HeartbeatRegex.IsMatch(line)) {
-              count++;
-              DateTime now = DateTime.Now;
-              if ((now - lastStatusWrite).TotalSeconds >= 2) {
-                lastStatusWrite = now;
-                try {
-                  string content = string.Format(
-                    "LastReceived={0:yyyy-MM-dd HH:mm:ss}\r\nCount={1}\r\nStatus=ALIVE\r\n",
-                    now, count
-                  );
-                  File.WriteAllText(hbStatusPath, content, System.Text.Encoding.UTF8);
-                } catch {}
-              }
-            } else {
-              try {
-                Console.Error.WriteLine(line);
-              } catch {}
-            }
-          }
+    public StreamDrainer(string profile, string server, string hbPath, bool debug) {
+      this.profile = profile; this.server = server; this.hbPath = hbPath; this.debug = debug;
+    }
 
-          if (count > 0) {
-            try {
-              string content = string.Format(
-                "LastReceived={0:yyyy-MM-dd HH:mm:ss}\r\nCount={1}\r\nStatus=STOPPED\r\n",
-                DateTime.Now, count
-              );
-              File.WriteAllText(hbStatusPath, content, System.Text.Encoding.UTF8);
-            } catch {}
-          }
-        } catch {}
+    public Thread[] Start(StreamReader stdout, StreamReader stderr) {
+      Thread a = Spawn(stdout), b = Spawn(stderr);
+      return new Thread[] { a, b };
+    }
+
+    Thread Spawn(StreamReader r) {
+      Thread t = new Thread(() => {
+        try { string line; while ((line = r.ReadLine()) != null) Handle(line); } catch {}
       });
-      thread.IsBackground = true;
-      thread.Start();
-      return thread;
+      t.IsBackground = true; t.Start(); return t;
+    }
+
+    public void Finish() {
+      if (hbCount > 0) WriteStatus("STOPPED", DateTime.Now);
+    }
+
+    void Handle(string line) {
+      if (string.IsNullOrWhiteSpace(line)) return;
+      if (Heartbeat.IsMatch(line)) { OnHeartbeat(); return; }
+      if (debug) { try { Console.WriteLine(line); } catch {} }
+      if (Noise.IsMatch(line)) return;
+      if (Lockout.IsMatch(line))          Emit(4002, EventLogEntryType.Error, "Account locked by firewall (brute-force protection).", line);
+      else if (AuthFail.IsMatch(line))    Emit(4000, EventLogEntryType.Error, "Authentication rejected by VPN gateway.", line);
+      else if (WintunFail.IsMatch(line))  Emit(4001, EventLogEntryType.Error, "Wintun adapter creation failed or timed out.", line);
+      else if (DtlsFail.IsMatch(line))    Emit(3000, EventLogEntryType.Warning, "DTLS handshake failed; falling back to TLS.", line);
+      else if (Established.IsMatch(line)) Emit(2001, EventLogEntryType.Information, "VPN tunnel established.", line);
+      else if (Connecting.IsMatch(line))  Emit(2000, EventLogEntryType.Information, "Connecting to VPN gateway.", line);
+    }
+
+    void OnHeartbeat() {
+      DateTime now = DateTime.Now;
+      lock (gate) {
+        hbCount++;
+        if (lastHb != DateTime.MinValue && (now - lastHb).TotalSeconds > 90)
+          Emit(3002, EventLogEntryType.Warning, "Keepalive heartbeat delayed.", "Gap of " + (int)(now - lastHb).TotalSeconds + " s between heartbeats.");
+        lastHb = now;
+        if ((now - lastStatus).TotalSeconds >= 2) { lastStatus = now; WriteStatus("ALIVE", now); }
+      }
+    }
+
+    void WriteStatus(string status, DateTime now) {
+      try {
+        File.WriteAllText(hbPath, string.Format("LastReceived={0:yyyy-MM-dd HH:mm:ss}\r\nCount={1}\r\nStatus={2}\r\n", now, hbCount, status), System.Text.Encoding.UTF8);
+      } catch {}
+    }
+
+    void Emit(int id, EventLogEntryType type, string summary, string detail) {
+      DateTime now = DateTime.Now;
+      lock (gate) {
+        DateTime last;
+        if (lastEmit.TryGetValue(id, out last) && (now - last).TotalSeconds < 30) return; // throttle repeats
+        lastEmit[id] = now;
+      }
+      try {
+        string msg = "Profile: " + profile + "\r\nServer: " + server + "\r\n" + summary + "\r\nDetail: " + detail;
+        EventLog.WriteEntry(Source, msg, type, id);
+      } catch {}
     }
   }
 }
 '@
-      Add-Type -TypeDefinition $filterCs -Language CSharp
+      Add-Type -TypeDefinition $drainerCs -Language CSharp
     }
 
     $ocExe = Join-Path $ocRoot 'openconnect.exe'
@@ -1248,7 +1394,7 @@ namespace OpenConnectSg {
     $psi.Arguments = "--config `"$confFile`" --passwd-on-stdin"
     $psi.UseShellExecute = $false
     $psi.RedirectStandardInput = $true
-    $psi.RedirectStandardOutput = $false
+    $psi.RedirectStandardOutput = $true
     $psi.RedirectStandardError = $true
     $psi.CreateNoWindow = $true
 
@@ -1258,12 +1404,24 @@ namespace OpenConnectSg {
     $writer.Flush()
     # Keep stdin stream open while openconnect is running to prevent EOF logout
 
-    $hbThread = [OpenConnectSg.StderrFilter]::StartProcessing($proc.StandardError, $hbStatus)
+    $drainer = New-Object OpenConnectSg.StreamDrainer($ServiceName, $serverText, $hbStatus, [bool]$DebugConsole)
+    $threads = $drainer.Start($proc.StandardOutput, $proc.StandardError)
 
     $proc.WaitForExit()
-    if ($hbThread) { [void]$hbThread.Join(2000) }
+    foreach ($th in $threads) { [void]$th.Join(2000) }
+    $drainer.Finish()
     try { $writer.Close() } catch {}
+    if ($proc.ExitCode -ne 0) {
+      Write-OcsEvent -Id 1002 -Level Error -ProfileName $ServiceName -Message "openconnect.exe exited abnormally (exit code $($proc.ExitCode))."
+    } else {
+      Write-OcsEvent -Id 1001 -ProfileName $ServiceName -Message 'Service stopped (openconnect.exe exited normally).'
+    }
     exit $proc.ExitCode
+  } catch {
+    if (-not $dpapiFailed) {
+      Write-OcsEvent -Id 1002 -Level Error -ProfileName $ServiceName -Message "service-run aborted: $($_.Exception.Message)"
+    }
+    throw
   } finally {
     $pw = $null
     try { if ($writer) { $writer.Close() } } catch {}
@@ -1272,6 +1430,68 @@ namespace OpenConnectSg {
     }
     try { $mutex.ReleaseMutex() } catch {}
   }
+}
+
+function Do-Logs {
+  param($profiles, [string[]]$LogArgs)
+  $gui = $false; $tail = 15; $level = 'All'; $raw = $false; $token = $null
+  for ($i = 0; $i -lt $LogArgs.Count; $i++) {
+    $a = [string]$LogArgs[$i]
+    switch -Regex ($a) {
+      '^(--gui|-g)$'       { $gui = $true }
+      '^(--raw|-raw)$'     { $raw = $true }
+      '^(--tail|-tail)$'   { if ($i + 1 -lt $LogArgs.Count) { $i++; [int]::TryParse($LogArgs[$i], [ref]$tail) | Out-Null } }
+      '^(--level|-level)$' { if ($i + 1 -lt $LogArgs.Count) { $i++; $level = [string]$LogArgs[$i] } }
+      default              { if (-not $token) { $token = $a } }
+    }
+  }
+  if ($gui) {
+    $view = Join-Path $env:ProgramData 'Microsoft\Event Viewer\Views\OpenConnectSg.xml'
+    if (Test-Path $view) { Start-Process eventvwr.msc -ArgumentList "/v:`"$view`"" } else { Start-Process eventvwr.msc }
+    Write-Host "  Windows Event Viewer launched (Custom Views > OpenConnectSg)." -ForegroundColor Green
+    return 0
+  }
+  $profName = $null
+  if ($token) {
+    try { $profName = (Resolve-Profile $profiles $token).Name } catch { $profName = $token }
+  }
+  $levels = switch -Regex ($level) { '^err' { @(2) } '^warn' { @(2, 3) } default { $null } }
+  $ev = @(Get-OcsEvents -ProfileName $profName -Max $tail -Levels $levels)
+
+  Write-Host ""
+  Write-Host " ==============================================================================" -ForegroundColor DarkGray
+  Write-Host "  OpenConnectSg :: Windows Event Log Viewer (EVTX)" -ForegroundColor White
+  Write-Host " ==============================================================================" -ForegroundColor DarkGray
+  Write-Host "  Filter     : Source=OpenConnectSg, Profile=$(if ($profName) { $profName } else { 'All' }), Level=$level, Tail=$tail"
+  Write-Host " ------------------------------------------------------------------------------" -ForegroundColor DarkGray
+  Write-Host ("  {0,-18} {1,-6} {2,-5} {3}" -f 'TIME (LOCAL)', 'LEVEL', 'EID', 'PROFILE / MESSAGE') -ForegroundColor Gray
+  Write-Host " ------------------------------------------------------------------------------" -ForegroundColor DarkGray
+  if ($ev.Count -eq 0) {
+    Write-Host "  (no events found)" -ForegroundColor DarkGray
+  }
+  foreach ($e in ($ev | Sort-Object TimeCreated)) {
+    $lv = switch ($e.Level) { 2 { 'ERROR' } 3 { 'WARN' } default { 'INFO' } }
+    $col = switch ($e.Level) { 2 { 'Red' } 3 { 'Yellow' } default { 'Green' } }
+    $pn = if ($e.Message -match '(?m)^Profile:\s*(\S+)') { $matches[1] } else { '-' }
+    $txt = if ($raw) { ($e.Message -replace "`r?`n", ' | ') } else { Get-OcsEventDetail $e }
+    Write-Host ("  {0:MM-dd HH:mm:ss.fff} {1,-6} {2,-5} " -f $e.TimeCreated, $lv, $e.Id) -ForegroundColor $col -NoNewline
+    Write-Host "$pn  $txt"
+  }
+  Write-Host " ==============================================================================" -ForegroundColor DarkGray
+  Write-Host "  Tip: openconnectsg logs -Level Error | logs <profile> | logs --gui | logs --raw" -ForegroundColor DarkGray
+  Write-Host " ==============================================================================" -ForegroundColor DarkGray
+  Write-Host ""
+  return 0
+}
+
+function Get-ConnectArgs {
+  param([string]$A1, [string]$A2)
+  $dbg = $false; $tok = $null
+  foreach ($x in @($A1, $A2)) {
+    if ([string]::IsNullOrWhiteSpace($x)) { continue }
+    if ($x -match '^(--debug|-debug)$') { $dbg = $true } elseif (-not $tok) { $tok = $x }
+  }
+  return [pscustomobject]@{ Token = $tok; Debug = $dbg }
 }
 
 function Do-Tray {
@@ -1290,9 +1510,10 @@ Usage:
   openconnectsg                           List profiles (= list, * indicates default)
   openconnectsg list                      List all profiles and status
   openconnectsg status [<profile>]        Show detailed status of a profile
-  openconnectsg connect [<profile>]       Connect to profile (single-tunnel enforcement)
+  openconnectsg connect [<profile>] [--debug] Connect to profile (--debug streams raw openconnect output, no files)
   openconnectsg disconnect [<profile|all>] Disconnect profile (or all active tunnels)
   openconnectsg setup                     Add new profile via interactive wizard
+  openconnectsg logs [<profile>] [--tail n] [--level error|warn] [--gui] [--raw]  Show Windows Event Log entries
   openconnectsg tray                      Open the tray GUI (connect/disconnect, network view)
   openconnectsg alias <profile> <alias>   Assign friendly alias to profile
   openconnectsg default <profile>         Set default profile
@@ -1304,7 +1525,7 @@ Usage:
   openconnectsg help                      Display this help screen
 
 Aliases:
-  ls -> list, up/start -> connect, down/stop -> disconnect, gui -> tray, add -> setup, rm -> remove, un/purge -> uninstall, update -> upgrade
+  ls -> list, up/start -> connect, down/stop -> disconnect, gui -> tray, log -> logs, add -> setup, rm -> remove, un/purge -> uninstall, update -> upgrade
 
 Identifier:
   <profile> = Index (#) | Alias | Account name | Service name substring
@@ -1324,9 +1545,12 @@ try {
     'list'         { Show-List (Get-Profiles) }
     'ls'           { Show-List (Get-Profiles) }
     'status'       { $exitCode = Do-Status     (Get-Profiles) $a1 }
-    'connect'      { $exitCode = Do-Connect    (Get-Profiles) $a1 }
-    'start'        { $exitCode = Do-Connect    (Get-Profiles) $a1 }
-    'up'           { $exitCode = Do-Connect    (Get-Profiles) $a1 }
+    'connect'      { $ca = Get-ConnectArgs $a1 $a2; $exitCode = Do-Connect (Get-Profiles) $ca.Token $ca.Debug }
+    'start'        { $ca = Get-ConnectArgs $a1 $a2; $exitCode = Do-Connect (Get-Profiles) $ca.Token $ca.Debug }
+    'up'           { $ca = Get-ConnectArgs $a1 $a2; $exitCode = Do-Connect (Get-Profiles) $ca.Token $ca.Debug }
+    'logs'         { $exitCode = Do-Logs       (Get-Profiles) @($args | Select-Object -Skip 1) }
+    'log'          { $exitCode = Do-Logs       (Get-Profiles) @($args | Select-Object -Skip 1) }
+    'event-init'   { Register-OcsEventInfra } # Internal: used by installer/setup wizard
     'disconnect'   { $exitCode = Do-Disconnect (Get-Profiles) $a1 }
     'stop'         { $exitCode = Do-Disconnect (Get-Profiles) $a1 }
     'down'         { $exitCode = Do-Disconnect (Get-Profiles) $a1 }

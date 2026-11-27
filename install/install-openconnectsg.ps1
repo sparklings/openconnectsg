@@ -1,4 +1,4 @@
-#Requires -RunAsAdministrator
+﻿#Requires -RunAsAdministrator
 <#
 .SYNOPSIS
   openconnectsg system installer - Deploys openconnectsg binaries to C:\Program Files\OpenConnect\bin
@@ -146,6 +146,12 @@ if (Test-Path $traySrc) {
 }
 Write-Host "Files deployed successfully to $BinDir"
 
+# Register Windows Event Log source and Event Viewer Custom View (OpenConnectSg)
+try {
+  & (Get-Command powershell.exe).Source -NoProfile -ExecutionPolicy Bypass -File (Join-Path $BinDir 'openconnectsg.ps1') event-init 2>&1 | Out-Null
+  Write-Host "Registered Event Log source and Event Viewer Custom View (OpenConnectSg)."
+} catch { Write-Warning "Could not register Event Log infrastructure: $($_.Exception.Message)" }
+
 # Register system PATH (duplicate prevention)
 $mp = [Environment]::GetEnvironmentVariable('Path', 'Machine')
 if (-not (($mp -split ';') -contains $BinDir)) {
@@ -159,7 +165,7 @@ if (-not (($mp -split ';') -contains $BinDir)) {
 $cmd = Join-Path $BinDir 'openconnectsg.cmd'
 if (Test-Path $cmd) {
   $deployedPs1 = Join-Path $BinDir 'openconnectsg.ps1'
-  $ver = '1.0.4c'
+  $ver = '1.0.5'
   if (Test-Path $deployedPs1) {
     $vLine = Get-Content $deployedPs1 -ErrorAction SilentlyContinue | Where-Object { $_ -match '^\$script:Version\s*=\s*[''"]([^''"]+)[''"]' } | Select-Object -First 1
     if ($vLine -and $vLine -match '^\$script:Version\s*=\s*[''"]([^''"]+)[''"]') {

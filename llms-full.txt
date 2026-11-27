@@ -43,7 +43,8 @@ openconnectsg/
 │   ├── install-guide.md            # Online, offline, and air-gapped installation guide
 │   ├── architecture.md             # Core architecture, process lifecycle, and daemon orchestration
 │   ├── security-credentials.md     # DPAPI LocalMachine encryption, ACL locking, and pin-sha256
-│   ├── troubleshooting.md          # Log analysis, Wintun timeout (0x102) fix, and diagnostics
+│   ├── troubleshooting.md          # Event Log analysis, Wintun timeout (0x102) fix, and diagnostics
+│   ├── evtx-technical-guide.md     # Windows Event Log (EVTX) architecture, EventID taxonomy, XPath/WEF operations
 │   └── openconnectsg.md            # Overview pointer and cross-document navigation
 ├── install/
 │   └── install-openconnectsg.ps1   # Deployment installer copying binaries to C:\Program Files\OpenConnect\bin and setting system PATH
@@ -70,9 +71,7 @@ C:\Program Files\OpenConnect\
 │       ├── pin.txt                 # RFC 7469 pin-sha256 hash string
 │       ├── label.txt               # Friendly alias name string
 │       ├── pw.bin                  # DPAPI-encrypted password bytes (Restricted ACL)
-│       └── logs\
-│           ├── out.log             # NSSM captured standard output
-│           └── err.log             # NSSM captured standard error
+│       └── heartbeat.status        # Keepalive snapshot (no text logs; logging is Windows Event Log only)
 ├── openconnect.exe                 # OpenConnect MinGW64-GnuTLS CLI
 └── repo\                           # Local git clone repository
 C:\Program Files\nssm\
@@ -84,17 +83,18 @@ C:\Program Files\nssm\
 |---|---|---|---|
 | `list` | `ls`, (none) | None | Displays formatted table of all profiles with Index, User, Server, Alias, Status, and Default flag (`*`). |
 | `status` | None | `[<profile>]` | Queries real-time service status (`Running`, `Stopped`, `N/A`) for a specific profile or all. |
-| `connect` | `up`, `start` | `[<profile>]` | Connects tunnel. Terminates other running openconnect tunnels (single-tunnel policy). Updates `default.txt`. |
+| `connect` | `up`, `start` | `[<profile>] [--debug]` | Connects tunnel. Terminates other running openconnect tunnels (single-tunnel policy). Updates `default.txt`. |
 | `disconnect`| `down`, `stop` | `[<profile\|all>]` | Stops target service or all active tunnels via NSSM. |
 | `setup` | `add`, `install` | None | Launches interactive configuration wizard (`init-openconnectsg.ps1`). |
 | `tray` | `gui` | None | Launches WinForms notification-area tray GUI with real-time route hierarchy and network analyzer. |
+| `logs` | `log` | `[<profile>] [--tail n] [--level error or warn] [--raw] [--gui]` | Shows OpenConnectSg Windows Event Log entries (EID 1000-5001); `--gui` opens Event Viewer Custom View. |
 | `alias` | `label` | `<profile> <name>` | Writes friendly alias to `profiles\<name>\label.txt`. |
 | `default` | None | `<profile>` | Sets active default profile pointer in `profiles\default.txt`. |
 | `remove` | `rm`, `delete` | `<profile>` | Prompts confirmation (`yes`), stops service, deletes NSSM service, purges profile directory. |
 | `upgrade` | `update` | `[<source>]` | Deploys latest binaries to installation directory, updates marker, restarts active services. |
 | `uninstall` | `un`, `purge` | `[<scope>]` | Uninstalls openconnectsg (`app`: script/service/profiles only, `full`: complete purge including NSSM and OpenConnect CLI). |
 | `service-run`| None | `<service_name>`| **Internal daemon runner**: Mutex guard -> DPAPI Unprotect -> launch `openconnect.exe` -> pipe password via stdin. |
-| `version` | `-v`, `--version`| None | Outputs current tool version (`openconnectsg 1.0.4`). |
+| `version` | `-v`, `--version`| None | Outputs current tool version (`openconnectsg 1.0.5`). |
 | `help` | `-h`, `--help` | None | Displays help usage screen. |
 
 ## 6. Identifier Resolution Engine (`Resolve-Profile`)
@@ -124,5 +124,5 @@ When a user provides `<profile>`, `openconnectsg` resolves the target through th
 ## 8. Common LLM Troubleshooting Inferences
 - **Error: "already running" or Mutex Conflict**: A previous PowerShell instance holds `Global\<svcName>`. Terminate lingering `openconnect.exe` or `powershell.exe` service instances.
 - **Error: "signer not found"**: Expected behavior with self-signed CAs. Safely handled by `pin-sha256` pinning.
-- **Service starts then stops immediately**: Check `profiles\<svcName>\logs\err.log`. Common cause is wrong credentials or invalid pin format.
+- **Service starts then stops immediately**: Run `openconnectsg logs <profile> --level error` (text log files no longer exist; EventID 4000/4002/4003). Common cause is wrong credentials or invalid pin format.
 - **Command not recognized after install**: System PATH was updated; requires closing existing terminal and opening a fresh session.
